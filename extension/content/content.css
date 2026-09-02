@@ -1,0 +1,144 @@
+/* content.css — Equation overlay styles for LaTeX for Google Docs */
+
+#latex-gdocs-overlays {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.latex-gdocs-overlay {
+  position: fixed;
+  pointer-events: auto;
+  background: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  overflow: hidden;
+}
+
+/* Linear typing: visual mirror only — clicks/keys pass through to Google Docs */
+.latex-gdocs-overlay.latex-gdocs-linear {
+  pointer-events: none;
+  cursor: text;
+  background: #e8f0fe;
+  border: 1px dashed #1a73e8;
+  min-height: 1.4em;
+  box-shadow: 0 0 0 3px #e8f0fe;
+  z-index: 10001;
+}
+
+/* F2 edit mode: real textarea, capture input */
+.latex-gdocs-overlay.latex-gdocs-linear.latex-gdocs-editing {
+  pointer-events: auto;
+  cursor: text;
+}
+
+.latex-gdocs-overlay.latex-gdocs-professional {
+  background: #ffffff;
+  box-shadow: 0 0 0 3px #ffffff, 0 1px 3px rgba(60, 64, 67, 0.2);
+  z-index: 10001;
+}
+
+.latex-gdocs-overlay:hover,
+.latex-gdocs-overlay:focus {
+  border-color: #1a73e8;
+  outline: none;
+}
+
+.latex-gdocs-overlay.latex-gdocs-hidden {
+  display: none;
+}
+
+.latex-gdocs-math {
+  display: inline-block;
+  font-size: 1.1em;
+  line-height: 1.4;
+}
+
+.latex-gdocs-math .katex {
+  font-size: 1.1em;
+}
+
+.latex-gdocs-source {
+  display: block;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75em;
+  color: #5f6368;
+  margin-top: 2px;
+  padding-top: 2px;
+  border-top: 1px dashed #dadce0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.latex-gdocs-linear-hint {
+  color: #5f6368;
+  font-family: system-ui, sans-serif;
+  font-size: 0.85em;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.latex-gdocs-linear-latex {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.95em;
+  color: #202124;
+  white-space: nowrap;
+}
+
+.latex-gdocs-linear-edit {
+  display: block;
+  width: 100%;
+  min-width: 140px;
+  min-height: 1.5em;
+  border: none;
+  outline: none;
+  resize: vertical;
+  background: transparent;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.95em;
+  color: #202124;
+  line-height: 1.4;
+  padding: 0;
+  margin: 0;
+}
+
+/* Hide underlying Google Docs source text covered by equation overlays */
+.latex-gdocs-source-covered {
+  color: transparent !important;
+  text-shadow: none !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Legacy: hide individual delimiter spans */
+.latex-gdocs-delimiter-hidden {
+  color: transparent !important;
+  font-size: 0.01px !important;
+  letter-spacing: -1em;
+}
+
+/* Screen-reader-only ARIA live region */
+.latex-gdocs-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.latex-gdocs-zone-active {
+  outline: 2px solid #1a73e8;
+  outline-offset: 1px;
+}

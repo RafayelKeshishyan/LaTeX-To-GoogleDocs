@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      color: #202124;
+      padding: 12px;
+    }
+    h1 { font-size: 15px; color: #1a73e8; margin-bottom: 4px; }
+    .subtitle { font-size: 11px; color: #5f6368; margin-bottom: 12px; }
+    label { display: block; font-weight: 500; margin-bottom: 4px; }
+    textarea {
+      width: 100%;
+      height: 80px;
+      padding: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      resize: vertical;
+    }
+    .preview {
+      margin: 12px 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      min-height: 48px;
+      text-align: center;
+    }
+    .preview-error { color: #d93025; font-size: 12px; }
+    .actions { display: flex; gap: 8px; margin-top: 8px; }
+    button {
+      flex: 1;
+      padding: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-secondary { background: #f1f3f4; color: #202124; }
+    .templates { margin-top: 16px; }
+    .templates h2 { font-size: 12px; text-transform: uppercase; color: #5f6368; margin-bottom: 8px; }
+    .template-group { margin-bottom: 10px; }
+    .template-group h3 { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .template-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      background: #fff;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .template-btn:hover { background: #e8f0fe; }
+    .template-btn code { font-family: 'Courier New', monospace; color: #5f6368; }
+    #status { margin-top: 8px; font-size: 12px; color: #137333; }
+    #status.error { color: #d93025; }
+    footer { margin-top: 16px; text-align: center; }
+    footer a { font-size: 11px; color: #1a73e8; }
+  </style>
+</head>
+<body>
+  <h1>LaTeX Equation Editor</h1>
+  <p class="subtitle">Insert ⟦eq⟧...⟦/eq⟧ equation zones</p>
+
+  <label for="latex-input">LaTeX</label>
+  <textarea id="latex-input" placeholder="y=\sqrt{x + 3}"></textarea>
+
+  <div class="preview" id="preview">
+    <span class="preview-placeholder">Preview appears here</span>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="btn-insert" type="button">Insert at Cursor</button>
+    <button class="btn-secondary" id="btn-clear" type="button">Clear</button>
+  </div>
+
+  <p id="status"></p>
+
+  <section class="templates">
+    <h2>DigiMath Worksheets</h2>
+    <div id="template-list">Loading templates...</div>
+  </section>
+
+  <footer>
+    <a href="https://accessuci.ics.uci.edu/digimath/" target="_blank">Access Digi Math</a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script>
+    const latexInput = document.getElementById('latex-input');
+    const preview = document.getElementById('preview');
+    const status = document.getElementById('status');
+    const btnInsert = document.getElementById('btn-insert');
+    const btnClear = document.getElementById('btn-clear');
+    const templateList = document.getElementById('template-list');
+
+    function updatePreview() {
+      const latex = latexInput.value.trim();
+      if (!latex) {
+        preview.innerHTML = '<span class="preview-placeholder">Preview appears here</span>';
+        return;
+      }
+      try {
+        preview.innerHTML = '';
+        katex.render(latex, preview, { throwOnError: true, displayMode: false });
+      } catch (e) {
+        preview.innerHTML = '<span class="preview-error">' + e.message + '</span>';
+      }
+    }
+
+    latexInput.addEventListener('input', updatePreview);
+
+    btnInsert.addEventListener('click', () => {
+      const latex = latexInput.value;
+      status.textContent = 'Inserting...';
+      status.className = '';
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (result.success) {
+            status.textContent = 'Equation inserted!';
+          } else {
+            status.textContent = result.error || 'Insert failed.';
+            status.className = 'error';
+          }
+        })
+        .withFailureHandler((err) => {
+          status.textContent = err.message;
+          status.className = 'error';
+        })
+        .insertEquation(latex);
+    });
+
+    btnClear.addEventListener('click', () => {
+      latexInput.value = '';
+      updatePreview();
+      status.textContent = '';
+    });
+
+    function loadTemplate(latex) {
+      latexInput.value = latex;
+      updatePreview();
+      latexInput.focus();
+    }
+
+    function renderTemplates(templates) {
+      templateList.innerHTML = '';
+      templates.forEach((group) => {
+        const div = document.createElement('div');
+        div.className = 'template-group';
+        const h3 = document.createElement('h3');
+        h3.textContent = group.title;
+        div.appendChild(h3);
+        group.examples.forEach((ex) => {
+          const btn = document.createElement('button');
+          btn.className = 'template-btn';
+          btn.type = 'button';
+          btn.innerHTML = ex.label + ' <code>' + ex.latex + '</code>';
+          btn.addEventListener('click', () => loadTemplate(ex.latex));
+          div.appendChild(btn);
+        });
+        templateList.appendChild(div);
+      });
+    }
+
+    google.script.run
+      .withSuccessHandler(renderTemplates)
+      .withFailureHandler(() => {
+        templateList.textContent = 'Could not load templates.';
+      })
+      .getWorksheetTemplates();
+
+    // Default example
+    latexInput.value = 'y=\\sqrt{x + 3}';
+    updatePreview();
+  </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+{
+  "manifest_version": 3,
+  "name": "LaTeX for Google Docs",
+  "version": "2.6.0",
+  "description": "Accessible LaTeX equation editor for Google Docs — renders math as images with screen reader support.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "clipboardWrite",
+    "tts"
+  ],
+  "host_permissions": [
+    "https://docs.google.com/document/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://docs.google.com/document/*"],
+      "exclude_matches": [
+        "https://docs.google.com/document/*/mobilebasic*",
+        "https://docs.google.com/document/u/*/d/*/mobilebasic*"
+      ],
+      "js": ["content/page-main.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://docs.google.com/document/*"],
+      "exclude_matches": [
+        "https://docs.google.com/document/*/mobilebasic*",
+        "https://docs.google.com/document/u/*/d/*/mobilebasic*"
+      ],
+      "js": [
+        "content/extension-context.js",
+        "content/docs-utils.js",
+        "lib/latex-speech.js",
+        "lib/speech-output.js",
+        "content/document-bridge.js",
+        "content/editor-panel.js",
+        "content/equation-navigator.js",
+        "content/content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_title": "Open LaTeX Equation Editor",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "insert-equation": {
+      "suggested_key": {
+        "default": "Alt+Shift+E"
+      },
+      "description": "Open equation editor"
+    },
+    "toggle-latex-source": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L"
+      },
+      "description": "Open equation editor"
+    },
+    "read-equation": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+R"
+      },
+      "description": "Read equation at cursor (natural math speech)"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content/page-main.js",
+        "sidepanel/sidepanel.html",
+        "sidepanel/sidepanel.css",
+        "sidepanel/sidepanel.js",
+        "lib/katex/katex.min.css",
+        "lib/katex/katex.min.js",
+        "lib/katex/fonts/*",
+        "lib/latex-speech.js",
+        "lib/speech-output.js"
+      ],
+      "matches": ["https://docs.google.com/*"]
+    }
+  ]
+}

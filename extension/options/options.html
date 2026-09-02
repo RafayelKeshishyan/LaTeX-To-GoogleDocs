@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaTeX for Google Docs — Settings</title>
+  <link rel="stylesheet" href="../lib/katex/katex.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px;
+      color: #202124;
+    }
+    h1 { font-size: 22px; color: #1a73e8; margin-bottom: 4px; }
+    .subtitle { color: #5f6368; margin-bottom: 24px; }
+    h2 { font-size: 14px; margin: 20px 0 10px; }
+    label { display: block; margin-bottom: 12px; font-size: 13px; }
+    label span { display: block; font-weight: 500; margin-bottom: 4px; }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .checkbox-label input { width: auto; }
+    button {
+      margin-top: 16px;
+      padding: 10px 20px;
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { background: #1557b0; }
+    #saved-msg { color: #137333; margin-top: 8px; font-size: 13px; display: none; }
+    .help { font-size: 12px; color: #5f6368; margin-top: 4px; }
+    a { color: #1a73e8; }
+  </style>
+</head>
+<body>
+  <h1>LaTeX for Google Docs</h1>
+  <p class="subtitle">Extension settings</p>
+
+  <form id="settings-form">
+    <h2>Keyboard shortcuts</h2>
+    <p class="help">Alt+= opens the editor. Alt+Enter inserts from the panel. Ctrl+Shift+R reads the equation at the cursor in the document.</p>
+
+    <label>
+      <span>Open equation editor</span>
+      <input type="text" id="shortcut-insert" value="Alt+=">
+    </label>
+    <label>
+      <span>Insert into document (side panel)</span>
+      <input type="text" id="shortcut-commit" value="Alt+Enter">
+    </label>
+    <label>
+      <span>Edit equation near cursor</span>
+      <input type="text" id="shortcut-edit" value="F2">
+    </label>
+    <label>
+      <span>Open equation editor (fallback)</span>
+      <input type="text" id="shortcut-source" value="Ctrl+Shift+L">
+    </label>
+    <label>
+      <span>Fallback open editor</span>
+      <input type="text" id="shortcut-fallback" value="Ctrl+Alt+M">
+    </label>
+
+    <h2>Accessibility</h2>
+    <label class="checkbox-label">
+      <input type="checkbox" id="announce-keystrokes" checked>
+      <span>Announce LaTeX keystrokes in the equation editor (linear mode)</span>
+    </label>
+    <p class="help">Natural math speech plays when you press Alt+Enter or click Insert at cursor, or when you click Read aloud.</p>
+    <label class="checkbox-label">
+      <input type="checkbox" id="equation-nav-announce" checked>
+      <span>Announce natural math speech when arrowing through equations in the document</span>
+    </label>
+
+    <button type="submit">Save settings</button>
+    <p id="saved-msg">Settings saved.</p>
+  </form>
+
+  <h2>Resources</h2>
+  <p><a href="https://accessuci.ics.uci.edu/digimath/" target="_blank">Access Digi Math</a></p>
+
+  <script src="options.js"></script>
+</body>
+</html>

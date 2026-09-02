@@ -1,0 +1,23 @@
+# Node / build
+node_modules/
+dist/
+build/
+
+# clasp (Google Apps Script CLI) secrets
+.clasp.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Large presentation/tutorial binaries. Kept on disk, out of git history.
+*.pptx
+Writing LaTeX in Word Tutorial.docx
