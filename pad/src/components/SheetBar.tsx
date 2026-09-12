@@ -58,7 +58,8 @@ export function SheetNavigation({
         >
           {inClass.map((s) => (
             <option key={s.id} value={s.id}>
-              {sheetLabel(s)} ({equationCount(s)} equations)
+              {sheetLabel(s)} ({equationCount(s)}{' '}
+              {equationCount(s) === 1 ? 'equation' : 'equations'})
             </option>
           ))}
         </select>

@@ -1464,8 +1464,7 @@ export default function App({
 
               <h2>Hear math</h2>
               <p className="hint" aria-hidden="true">
-                Alt+Enter opens Professional math for your screen reader. Escape returns to
-                Linear.
+                Alt+Enter hears the math with your screen reader. Escape returns to Linear.
               </p>
               <MathPreview
                 latex={active.latex}
@@ -1479,18 +1478,9 @@ export default function App({
                 }
               />
 
-              <div className="toolbar" role="group" aria-label="Equation actions">
+              <div className="toolbar">
                 <button type="button" onClick={commitPreview}>
                   Hear math <span className="kbd" aria-hidden="true">Alt+Enter</span>
-                </button>
-                <button type="button" onClick={() => addEquationOrFocus()}>
-                  Add equation <span className="kbd" aria-hidden="true">Alt+=</span>
-                </button>
-                <button type="button" onClick={addNote}>
-                  New note <span className="kbd" aria-hidden="true">Alt+N</span>
-                </button>
-                <button type="button" onClick={removeActive}>
-                  Remove equation <span className="kbd" aria-hidden="true">Alt+Delete</span>
                 </button>
               </div>
 
@@ -1502,9 +1492,6 @@ export default function App({
                   </button>
                   <button type="button" onClick={copyMathML}>
                     Copy MathML
-                  </button>
-                  <button type="button" onClick={duplicateActive}>
-                    Duplicate
                   </button>
                   <button
                     type="button"
@@ -1569,20 +1556,6 @@ export default function App({
                 <p className="hint" aria-hidden="true">
                   Match your worksheet (1.2, 3a). Leave blank for Note numbers.
                 </p>
-              </div>
-              <div className="toolbar" role="group" aria-label="Note actions">
-                <button type="button" onClick={addNote}>
-                  New note <span className="kbd" aria-hidden="true">Alt+N</span>
-                </button>
-                <button type="button" onClick={() => addEquationOrFocus()}>
-                  New equation <span className="kbd" aria-hidden="true">Alt+=</span>
-                </button>
-                <button type="button" onClick={duplicateActive}>
-                  Duplicate
-                </button>
-                <button type="button" onClick={removeActive}>
-                  Remove <span className="kbd" aria-hidden="true">Alt+Delete</span>
-                </button>
               </div>
               <a className="skip-link" href="#work-list" onClick={skipToWorkList}>
                 Skip to Your work
@@ -1680,7 +1653,7 @@ export default function App({
             })}
           </ul>
 
-          <div className="toolbar" role="group" aria-label="Selected item actions">
+          <div className="toolbar" role="group" aria-label="Add or change work">
             <button type="button" onClick={() => addEquationOrFocus()}>
               New equation <span className="kbd" aria-hidden="true">Alt+=</span>
             </button>

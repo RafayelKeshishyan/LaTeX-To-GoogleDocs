@@ -19,6 +19,7 @@ const SECTIONS: HelpSection[] = [
       'From the page name, press Enter for Linear.',
       'Alt+Equals adds an equation, or focuses the empty one.',
       'Alt+N adds a note for explanations or thoughts.',
+      'Alt+Delete removes the equation or note you are editing.',
       'Optional Problem number matches the worksheet (1.2, 3a). Leave blank to use Equation or Note numbers.',
     ],
   },
@@ -26,7 +27,7 @@ const SECTIONS: HelpSection[] = [
     id: 'help-preview',
     title: 'Hear math',
     items: [
-      'Alt+Enter opens Professional math for your screen reader.',
+      'Alt+Enter hears the math with your screen reader.',
       'Escape returns to Linear. Your typing stays editable.',
     ],
   },

@@ -390,10 +390,25 @@ async function main() {
   } else {
     note('Hear math is labeled on the equation toolbar');
   }
-  if (!(await page.getByRole('button', { name: /^New note/i }).count())) {
-    issue('New note is not available while editing an equation');
+  const workActions = await page
+    .locator('.doc-pane [aria-label="Add or change work"] button')
+    .allTextContents();
+  if (!workActions.some((label) => /New note/i.test(label))) {
+    issue('New note is not available from the Your work toolbar');
   } else {
-    note('New note is available from the equation toolbar');
+    note('New note is available from the Your work toolbar');
+  }
+
+  // The same action must not be offered by both panes under two different names.
+  const editActions = await page.locator('.edit-pane > .toolbar button').allTextContents();
+  const firstWord = (label) => label.trim().split(/\s+/)[0].toLowerCase();
+  const shared = editActions
+    .map(firstWord)
+    .filter((word) => workActions.map(firstWord).includes(word));
+  if (shared.length) {
+    issue(`Editing actions are duplicated across both toolbars: ${shared.join(', ')}`);
+  } else {
+    note('Creation and removal actions live in one toolbar only');
   }
   if (!(await page.getByLabel('Problem number', { exact: true }).count())) {
     issue('Problem number field is missing for worksheet labels like 1.2');
