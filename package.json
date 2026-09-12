@@ -1,0 +1,9 @@
+{
+  "name": "latex-to-googledocs",
+  "private": true,
+  "description": "Monorepo scripts. Digi Math Pad lives in pad/; Chrome extension in extension/.",
+  "scripts": {
+    "pad": "npm --prefix pad run dev",
+    "pad:build": "npm --prefix pad run build"
+  }
+}

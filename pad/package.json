@@ -1,0 +1,36 @@
+{
+  "name": "digimath-pad",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "check:supabase": "node scripts/check-supabase.mjs",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "test:sr": "node scripts/sr-student-walkthrough.mjs",
+    "verify": "npm run lint && npm run build && npm run test:sr",
+    "test:cloud": "node scripts/cloud-workspace-test.mjs",
+    "test:word": "node scripts/word-export-test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "docx": "^9.7.1",
+    "katex": "^0.18.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "jszip": "^3.10.2",
+    "oxlint": "^1.79.0",
+    "playwright": "^1.63.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2"
+  }
+}
