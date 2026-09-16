@@ -97,7 +97,7 @@
 | Step | Action | Expect |
 |------|--------|--------|
 | D.1 | **Alt+R** or **Review answers** | The modal opens once on the first answer needing attention, or the current answer. The focused row says Empty or Invalid when needed; the dialog does not read every answer or announce totals |
-| D.2 | **Arrow Up/Down**, **Home/End** | Focus moves within the vertical Answers toolbar without “N of M”; Tab cannot leave the dialog |
+| D.2 | **Arrow Up/Down**, **Home/End** | Focus moves within the Answers interaction area without “N of M”; Tab cannot leave the dialog |
 | D.3 | Enter / activate a row | Jumps to edit that equation or note |
 | D.3a | **Escape** | Review closes and focus returns directly to Review answers; NVDA does not fall back to Skip to Linear or the main landmark |
 | D.4 | **Copy all answers** | Numbered LaTeX (+ prose) on clipboard |

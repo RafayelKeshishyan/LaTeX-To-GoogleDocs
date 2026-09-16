@@ -214,9 +214,8 @@ export function ReviewPanel({
       <div
         ref={listRef}
         className="review-list"
-        role="toolbar"
+        role="application"
         aria-label="Answers"
-        aria-orientation="vertical"
       >
         {sheet.blocks.map((block) => {
           const label = blockListName(sheet.blocks, block.id);

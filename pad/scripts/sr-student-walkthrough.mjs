@@ -998,7 +998,6 @@ async function main() {
     summaryHidden: el.querySelector('#review-summary')?.getAttribute('aria-hidden') || '',
     answerGroupRole: el.querySelector('.review-list')?.getAttribute('role') || '',
     answerGroupName: el.querySelector('.review-list')?.getAttribute('aria-label') || '',
-    answerGroupOrientation: el.querySelector('.review-list')?.getAttribute('aria-orientation') || '',
   }));
   if (
     reviewSemantics.tag !== 'DIALOG' ||
@@ -1007,9 +1006,8 @@ async function main() {
     reviewSemantics.description ||
     reviewSemantics.headingHidden !== 'true' ||
     reviewSemantics.summaryHidden !== 'true' ||
-    reviewSemantics.answerGroupRole !== 'toolbar' ||
-    reviewSemantics.answerGroupName !== 'Answers' ||
-    reviewSemantics.answerGroupOrientation !== 'vertical'
+    reviewSemantics.answerGroupRole !== 'application' ||
+    reviewSemantics.answerGroupName !== 'Answers'
   ) {
     issue(`Ready Review should expose one concise dialog name: ${JSON.stringify(reviewSemantics)}`);
   } else {
@@ -1152,13 +1150,13 @@ async function main() {
   } else {
     note('Alt+R opens Review from Linear');
   }
-  await page.getByRole('button', { name: /Close review/i }).click();
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(80);
   f = await focusInfo(page);
   if (!f.isLinear || f.id === 'prose-focus-target') {
-    issue(`Closing Review opened with Alt+R should restore Linear, got ${JSON.stringify(f)}`);
+    issue(`One Escape from Review opened with Alt+R should restore Linear, got ${JSON.stringify(f)}`);
   } else {
-    note('Closing Review opened with Alt+R restores Linear');
+    note('One Escape closes Review opened with Alt+R and restores Linear');
   }
 
   // Copy all / accessible HTML / class library — full UI only
