@@ -206,9 +206,9 @@ export async function createWordDocumentBlob(sheet: PadSheet): Promise<Blob> {
   }
 
   const document = new WordDocument({
-    creator: 'Digi Math Pad',
+    creator: 'EquaNote',
     title: sheet.title,
-    description: 'Math work exported from Digi Math Pad with editable Office Math equations.',
+    description: 'Math work exported from EquaNote with editable Office Math equations.',
     sections: [{ children }],
   });
 

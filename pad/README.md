@@ -1,4 +1,4 @@
-# Digi Math Pad
+# EquaNote
 
 An independent, accessible **Linear LaTeX** workspace for blind and low-vision students, designed for
 NVDA, JAWS, and VoiceOver on Mac. Verified with NVDA + MathCAT; JAWS and VoiceOver passes are still
@@ -124,4 +124,4 @@ in desktop Word with the screen-reader versions supported for deployment.
 
 ## Relation to the Chrome extension
 
-The Docs extension still helps insert `[[eq]]` into shared Docs. **Accessible authoring and braille live in Digi Math Pad.**
+The Docs extension still helps insert `[[eq]]` into shared Docs. **Accessible authoring and braille live in EquaNote.**

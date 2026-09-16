@@ -209,7 +209,7 @@ async function main() {
   }
 
   const initialPageTitle = await page.locator('.title-field input').inputValue();
-  if (await page.title() !== `${initialPageTitle} — Digi Math Pad`) {
+  if (await page.title() !== `${initialPageTitle} — EquaNote`) {
     issue(`Browser title does not name the current practice page: ${await page.title()}`);
   } else {
     note('Browser title names the current practice page');

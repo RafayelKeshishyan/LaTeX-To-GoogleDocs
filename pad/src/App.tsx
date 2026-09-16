@@ -286,7 +286,7 @@ export default function App({
   }, [activeId]);
 
   useEffect(() => {
-    document.title = `${sheet.title} — Digi Math Pad`;
+    document.title = `${sheet.title} — EquaNote`;
   }, [sheet.title]);
 
   useEffect(() => {
@@ -1376,7 +1376,7 @@ export default function App({
       <header className="top">
         <div className="brand">
           <p className="product-name" id="app-name">
-            Digi Math Pad
+            EquaNote
           </p>
           <p className="tagline">Linear math practice, designed for NVDA, JAWS, and VoiceOver</p>
         </div>

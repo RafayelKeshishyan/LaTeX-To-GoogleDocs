@@ -103,7 +103,7 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
   }, []);
 
   useEffect(() => {
-    document.title = `${intent === 'sign-in' ? 'Sign in' : 'Create an account'} — Digi Math Pad`;
+    document.title = `${intent === 'sign-in' ? 'Sign in' : 'Create an account'} — EquaNote`;
   }, [intent]);
 
   function showResult(text: string, error = false) {
@@ -160,7 +160,7 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
     // Sign in button" when focus enters the page.
     <main className="auth-shell" aria-label="Account">
       <section className="auth-card">
-        <p className="product-name">Digi Math Pad</p>
+        <p className="product-name">EquaNote</p>
         <h1 id="account-heading" ref={headingRef} tabIndex={-1}>
           {intent === 'sign-in' ? 'Sign in' : 'Create an account'}
         </h1>
@@ -251,14 +251,14 @@ function AccountLoadingScreen() {
 
   useEffect(() => {
     headingRef.current?.focus();
-    document.title = 'Loading account — Digi Math Pad';
+    document.title = 'Loading account — EquaNote';
   }, []);
 
   return (
     <main className="auth-shell" aria-busy="true" aria-labelledby="loading-account-heading">
       <section className="auth-card">
         <h1 id="loading-account-heading" ref={headingRef} tabIndex={-1}>
-          Digi Math Pad
+          EquaNote
         </h1>
         <p role="status">Loading account…</p>
       </section>
@@ -328,7 +328,7 @@ function ChoiceScreen({
 
   useEffect(() => {
     headingRef.current?.focus();
-    document.title = `${heading} — Digi Math Pad`;
+    document.title = `${heading} — EquaNote`;
   }, [heading]);
 
   return (
@@ -405,7 +405,7 @@ function WorkspaceLoading() {
 
   useEffect(() => {
     headingRef.current?.focus();
-    document.title = 'Loading saved work — Digi Math Pad';
+    document.title = 'Loading saved work — EquaNote';
   }, []);
 
   return (

@@ -1,4 +1,4 @@
-# EquaNote (Digi Math Pad) — Vite app lives in pad/
+# EquaNote — Vite app lives in pad/
 [build]
   base = "pad"
   command = "npm run build"

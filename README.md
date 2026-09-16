@@ -2,7 +2,7 @@
 
 An accessible LaTeX equation workflow for Google Docs, built for blind and low-vision students, sighted LaTeX users, and TVIs.
 
-> **Accessible authoring:** For NVDA/JAWS MathCAT and braille, use **[Digi Math Pad](pad/README.md)** (`pad/`). Google Docs cannot expose MathML the way Word or a web MathML page can. The Chrome extension remains for inserting LaTeX into shared Docs. Full write-up of what we tried on Docs: **[docs/docs-extension-a11y-retrospective.md](docs/docs-extension-a11y-retrospective.md)**.
+> **Accessible authoring:** For NVDA/JAWS MathCAT and braille, use **[EquaNote](pad/README.md)** (`pad/`). Google Docs cannot expose MathML the way Word or a web MathML page can. The Chrome extension remains for inserting LaTeX into shared Docs. Full write-up of what we tried on Docs: **[docs/docs-extension-a11y-retrospective.md](docs/docs-extension-a11y-retrospective.md)**.
 
 This is an independent project for helping students learn LaTeX math before college STEM, using muscle memory aligned with Microsoft Word.
 
