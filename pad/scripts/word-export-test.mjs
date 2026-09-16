@@ -36,13 +36,20 @@ async function main() {
       await page.getByRole('button', { name: 'Continue with personal practice' }).click();
     }
 
-    const editor = page.locator('.linear-editor textarea');
+    const editor = page.locator('.linear-editor .linear-input');
     await editor.waitFor();
     await editor.fill('y=\\sqrt{x+3}');
     await editor.focus();
     await page.keyboard.press('Alt+=');
     await page.waitForFunction(() => document.querySelectorAll('.doc-pane .block-select').length === 2);
     await editor.fill('\\frac{1}{x^2}');
+
+    // Download Word is a primary hand-in control in the student simple UI.
+    const exportTools = page.locator('details.export-tools');
+    if (await exportTools.count()) {
+      await exportTools.locator('summary').click();
+      await page.waitForTimeout(50);
+    }
 
     const downloadPromise = page.waitForEvent('download', { timeout: 30_000 });
     await page.getByRole('button', { name: 'Download Word' }).click();

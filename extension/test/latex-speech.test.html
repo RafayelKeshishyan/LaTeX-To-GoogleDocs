@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaTeX speech tests</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+      color: #202124;
+    }
+    h1 { font-size: 22px; color: #1a73e8; margin-bottom: 4px; }
+    .subtitle { color: #5f6368; margin-bottom: 20px; font-size: 14px; }
+    #summary {
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    #summary.pass { background: #e6f4ea; color: #137333; }
+    #summary.fail { background: #fce8e6; color: #c5221f; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+         color: #5f6368; margin: 22px 0 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 6px 10px; border-bottom: 2px solid #dadce0; color: #5f6368; }
+    td { padding: 6px 10px; border-bottom: 1px solid #f1f3f4; vertical-align: top; }
+    tr.fail td { background: #fef7f7; }
+    .status { font-weight: 600; white-space: nowrap; }
+    .status.ok { color: #137333; }
+    .status.no { color: #c5221f; }
+    code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; }
+    .got { color: #c5221f; display: block; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>LaTeX speech tests</h1>
+  <p class="subtitle">
+    Checks <code>lib/latex-speech.js</code> against the equations used in the practice
+    tutorials. Open this file directly in Chrome — no build step or server needed.
+  </p>
+
+  <div id="summary" role="status" aria-live="polite">Running…</div>
+  <div id="results"></div>
+
+  <script src="../lib/latex-speech.js"></script>
+  <script src="latex-speech.cases.js"></script>
+  <script>
+    (function () {
+      const results = document.getElementById('results');
+      const summary = document.getElementById('summary');
+
+      let passed = 0;
+      let failed = 0;
+      let currentGroup = null;
+      let table = null;
+
+      LATEX_SPEECH_CASES.forEach((testCase) => {
+        if (testCase.group !== currentGroup) {
+          currentGroup = testCase.group;
+
+          const heading = document.createElement('h2');
+          heading.textContent = currentGroup;
+          results.appendChild(heading);
+
+          table = document.createElement('table');
+          table.innerHTML =
+            '<thead><tr><th>Result</th><th>LaTeX</th><th>Speech</th></tr></thead><tbody></tbody>';
+          results.appendChild(table);
+        }
+
+        let actual;
+        try {
+          actual = LatexSpeech.toNaturalSpeech(testCase.latex);
+        } catch (err) {
+          actual = 'THREW: ' + err.message;
+        }
+
+        const ok = actual === testCase.expect;
+        if (ok) passed += 1;
+        else failed += 1;
+
+        const row = document.createElement('tr');
+        if (!ok) row.className = 'fail';
+
+        const status = document.createElement('td');
+        status.className = 'status ' + (ok ? 'ok' : 'no');
+        status.textContent = ok ? 'PASS' : 'FAIL';
+
+        const input = document.createElement('td');
+        const code = document.createElement('code');
+        code.textContent = testCase.latex || '(empty)';
+        input.appendChild(code);
+
+        const output = document.createElement('td');
+        output.textContent = testCase.expect;
+        if (!ok) {
+          const got = document.createElement('span');
+          got.className = 'got';
+          got.textContent = 'got: ' + actual;
+          output.appendChild(got);
+        }
+
+        row.append(status, input, output);
+        table.querySelector('tbody').appendChild(row);
+      });
+
+      summary.className = failed ? 'fail' : 'pass';
+      summary.textContent = failed
+        ? failed + ' failing, ' + passed + ' passing'
+        : 'All ' + passed + ' tests passing';
+    })();
+  </script>
+</body>
+</html>

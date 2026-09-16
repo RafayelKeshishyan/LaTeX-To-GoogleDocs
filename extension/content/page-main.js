@@ -117,6 +117,7 @@
       dispatchKeypress(target, '\u0020', 'Space', 32);
     } else if (char === '\n') {
       dispatchKeydown(target, 'Enter', 'Enter', 13);
+      dispatchKeyup(target, 'Enter', 'Enter', 13);
     } else if (char === '\t') {
       dispatchKeydown(target, 'Tab', 'Tab', 9);
     } else {
@@ -293,8 +294,11 @@
   function deleteCurrentLine(target) {
     focusDocument(target, { wake: false });
     dispatchKeydown(target, 'Home', 'Home', 36);
+    dispatchKeyup(target, 'Home', 'Home', 36);
     dispatchKeydown(target, 'End', 'End', 35, { shiftKey: true });
+    dispatchKeyup(target, 'End', 'End', 35, { shiftKey: true });
     dispatchKeydown(target, 'Backspace', 'Backspace', 8);
+    dispatchKeyup(target, 'Backspace', 'Backspace', 8);
     return true;
   }
 

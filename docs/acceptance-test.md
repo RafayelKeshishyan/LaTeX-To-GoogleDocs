@@ -108,7 +108,7 @@ Expected natural speech: *"y equals the square root of x plus 3"*
 
 ---
 
-## Step 8 — DigiMath template
+## Step 8 — Practice template
 
 | # | Action | You should hear… |
 |---|--------|------------------|

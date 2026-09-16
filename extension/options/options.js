@@ -1,118 +1,49 @@
 /**
-
  * options.js — Extension options page
-
  */
 
-
-
-const DEFAULT_SHORTCUTS = {
-
-  insert: 'Alt+=',
-
-  commit: 'Alt+Enter',
-
-  editLinear: 'F2',
-
-  toggleSource: 'Ctrl+Shift+L',
-
-  fallbackInsert: 'Ctrl+Alt+M'
-
-};
-
-
-
 document.addEventListener('DOMContentLoaded', () => {
-
   const form = document.getElementById('settings-form');
-
   const savedMsg = document.getElementById('saved-msg');
-
-
-
-  const fields = {
-
-    insert: document.getElementById('shortcut-insert'),
-
-    commit: document.getElementById('shortcut-commit'),
-
-    editLinear: document.getElementById('shortcut-edit'),
-
-    toggleSource: document.getElementById('shortcut-source'),
-
-    fallbackInsert: document.getElementById('shortcut-fallback')
-
-  };
-
   const announceKeystrokesCheckbox = document.getElementById('announce-keystrokes');
   const equationNavAnnounceCheckbox = document.getElementById('equation-nav-announce');
+  const speechModeRadios = form.querySelectorAll('input[name="speech-mode"]');
 
+  const VALID_SPEECH_MODES = ['screenReader', 'extension'];
 
+  function selectedSpeechMode() {
+    for (const radio of speechModeRadios) {
+      if (radio.checked) return radio.value;
+    }
+    return 'screenReader';
+  }
 
-  chrome.storage.sync.get(
-    ['shortcuts', 'announceKeystrokes', 'equationNavAnnounce'],
-    (data) => {
-
-    const shortcuts = { ...DEFAULT_SHORTCUTS, ...data.shortcuts };
-
-    fields.insert.value = shortcuts.insert;
-
-    fields.commit.value = shortcuts.commit;
-
-    fields.editLinear.value = shortcuts.editLinear;
-
-    fields.toggleSource.value = shortcuts.toggleSource;
-
-    fields.fallbackInsert.value = shortcuts.fallbackInsert;
-
+  chrome.storage.sync.get(['announceKeystrokes', 'equationNavAnnounce', 'speechMode'], (data) => {
     if (announceKeystrokesCheckbox) {
       announceKeystrokesCheckbox.checked = data.announceKeystrokes !== false;
     }
     if (equationNavAnnounceCheckbox) {
       equationNavAnnounceCheckbox.checked = data.equationNavAnnounce !== false;
     }
+
+    const stored = VALID_SPEECH_MODES.includes(data.speechMode) ? data.speechMode : 'screenReader';
+    for (const radio of speechModeRadios) {
+      radio.checked = radio.value === stored;
+    }
   });
 
-
-
   form.addEventListener('submit', (e) => {
-
     e.preventDefault();
-
-
-
-    const shortcuts = {
-
-      insert: fields.insert.value.trim(),
-
-      commit: fields.commit.value.trim(),
-
-      editLinear: fields.editLinear.value.trim(),
-
-      toggleSource: fields.toggleSource.value.trim(),
-
-      fallbackInsert: fields.fallbackInsert.value.trim()
-
-    };
-
-
 
     const announceKeystrokes = announceKeystrokesCheckbox?.checked !== false;
     const equationNavAnnounce = equationNavAnnounceCheckbox?.checked !== false;
+    const speechMode = selectedSpeechMode();
 
-
-
-    chrome.storage.sync.set(
-      { shortcuts, announceKeystrokes, equationNavAnnounce },
-      () => {
-
+    chrome.storage.sync.set({ announceKeystrokes, equationNavAnnounce, speechMode }, () => {
       savedMsg.style.display = 'block';
-
-      setTimeout(() => { savedMsg.style.display = 'none'; }, 3000);
-
+      setTimeout(() => {
+        savedMsg.style.display = 'none';
+      }, 3000);
     });
-
   });
-
 });
-

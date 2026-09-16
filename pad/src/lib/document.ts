@@ -160,46 +160,26 @@ export function blockProblemLabel(block: Block | null | undefined): string {
   return (block?.label || '').trim();
 }
 
-function equationOrdinal(blocks: Block[], id: string): { n: number; total: number } {
+function equationOrdinal(blocks: Block[], id: string): number {
   const eqs = blocks.filter((b) => b.type === 'equation');
-  const total = Math.max(eqs.length, 1);
-  const n = Math.max(eqs.findIndex((b) => b.id === id) + 1, 1);
-  return { n, total };
+  return Math.max(eqs.findIndex((b) => b.id === id) + 1, 1);
 }
 
-function noteOrdinal(blocks: Block[], id: string): { n: number; total: number } {
+function noteOrdinal(blocks: Block[], id: string): number {
   const notes = blocks.filter((b) => b.type === 'prose');
-  const total = Math.max(notes.length, 1);
-  const n = Math.max(notes.findIndex((b) => b.id === id) + 1, 1);
-  return { n, total };
+  return Math.max(notes.findIndex((b) => b.id === id) + 1, 1);
 }
 
-/** Short name for lists and confirms: "1.2", "Equation 2", or "Note 1". */
+/** List / editor name: "1.2", "Equation 2", or "Note 1". */
 export function blockListName(blocks: Block[], id: string): string {
   const block = blocks.find((b) => b.id === id);
   if (!block) return 'Item';
-  const custom = blockProblemLabel(block);
   if (block.type === 'equation') {
+    const custom = blockProblemLabel(block);
     if (custom) return custom;
-    return `Equation ${equationOrdinal(blocks, id).n}`;
+    return `Equation ${equationOrdinal(blocks, id)}`;
   }
-  if (custom) return `Note ${custom}`;
-  return `Note ${noteOrdinal(blocks, id).n}`;
-}
-
-/** Focused-field name: custom problem number, or Equation/Note N of M. */
-export function blockEditorName(blocks: Block[], id: string): string {
-  const block = blocks.find((b) => b.id === id);
-  if (!block) return 'Item';
-  const custom = blockProblemLabel(block);
-  if (block.type === 'equation') {
-    if (custom) return custom;
-    const { n, total } = equationOrdinal(blocks, id);
-    return `Equation ${n} of ${total}`;
-  }
-  if (custom) return `Note ${custom}`;
-  const { n, total } = noteOrdinal(blocks, id);
-  return `Note ${n} of ${total}`;
+  return `Note ${noteOrdinal(blocks, id)}`;
 }
 
 export function resolveActiveBlockId(sheet: PadSheet): string {

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "LaTeX for Google Docs",
-  "version": "2.6.0",
-  "description": "Accessible LaTeX equation editor for Google Docs — renders math as images with screen reader support.",
+  "version": "2.11.0",
+  "description": "Accessible LaTeX equation editor for Google Docs with keyboard and screen reader support.",
   "permissions": [
     "storage",
     "activeTab",
@@ -35,7 +35,9 @@
       "js": [
         "content/extension-context.js",
         "content/docs-utils.js",
+        "lib/katex/katex.min.js",
         "lib/latex-speech.js",
+        "lib/latex-mathml.js",
         "lib/speech-output.js",
         "content/document-bridge.js",
         "content/editor-panel.js",
@@ -70,12 +72,6 @@
       },
       "description": "Open equation editor"
     },
-    "toggle-latex-source": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+L"
-      },
-      "description": "Open equation editor"
-    },
     "read-equation": {
       "suggested_key": {
         "default": "Ctrl+Shift+R"
@@ -94,6 +90,7 @@
         "lib/katex/katex.min.js",
         "lib/katex/fonts/*",
         "lib/latex-speech.js",
+        "lib/latex-mathml.js",
         "lib/speech-output.js"
       ],
       "matches": ["https://docs.google.com/*"]

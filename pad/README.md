@@ -1,6 +1,8 @@
 # Digi Math Pad
 
-An independent, accessible **Linear LaTeX** workspace for blind and low-vision students using NVDA, JAWS + MathCAT, or VoiceOver on Mac.
+An independent, accessible **Linear LaTeX** workspace for blind and low-vision students, designed for
+NVDA, JAWS, and VoiceOver on Mac. Verified with NVDA + MathCAT; JAWS and VoiceOver passes are still
+open — see [`../docs/math-pad-a11y-test.md`](../docs/math-pad-a11y-test.md).
 
 Students keep **separate sheets** for each assignment, write and fix equations here (real MathML), review answers, then hand in via an **editable Word document with Office Math**, a **visual PDF**, **Copy all answers**, or an **accessible HTML file with MathML**. JSON backup and restore protect editable source work. This is not Google Docs.
 
@@ -50,36 +52,32 @@ Shortcuts are optional. Every action is reachable with Tab and Enter.
 
 | Action | Keys |
 |--------|------|
-| Work name → Linear | **Enter** from Assignment name / Practice page name |
+| Work name → Linear | **Enter** from Practice page name |
 | New equation / focus empty | **Alt+=** |
 | New note (explanation / thoughts) | **Alt+N** |
-| Hear math (Professional) | **Alt+Enter** · **Escape** back to Linear |
-| Previous / next equation from Linear | **Alt+Up** / **Alt+Down** (arrows only edit inside the field) |
+| Hear math | **Alt+Enter** · **Escape** back to Linear (also from Problem number) |
+| Previous / next equation or note | **Up** / **Down** from Linear; **Alt+Up** / **Alt+Down** from any editor |
 | Remove selected item in Your work | **Delete** (confirms if not empty) |
 | Remove from editor | **Alt+Delete** |
-| Undo remove / clear / sheet delete | **Ctrl+Shift+Z** (app undo). **Ctrl+Z** in Linear undoes typing only |
-| Paste clipboard as new equation | **Ctrl+Shift+V** |
-| Copy all answers | **Ctrl+Shift+C** |
+| Undo remove | **Ctrl+Shift+Z** (app undo). **Ctrl+Z** in Linear undoes typing only |
 | Your work navigation | **Arrow Up/Down**, **Home/End**, **Enter** to edit |
 | Open Review | **Alt+R** |
 | Quick help | **Quick help** button (dialog focuses its heading) |
 | Review navigation | **Arrow Up/Down**, **Home/End**, **Enter** to edit, **Escape** to close |
 | Save | **Ctrl+S** (also autosaves) |
-| Print / visual PDF | **Ctrl+P** |
 
 ## Student workflow
 
-1. **Practice** class = free practice pages. **New class** = a course (Algebra 1, etc.).
-2. Enter a class name in the in-page dialog. Use **Rename class** later if needed.
-3. In a class, choose **New assignment** and edit its **Assignment name**. In Practice, choose **New practice page** and edit its **Practice page name**.
-4. Write in Linear; optional **Problem number** (1.2, 3a) matches a worksheet.
-5. **Alt+N** adds a note for explanations or thoughts.
-6. **Alt+Enter** only when you want the math read (typing stays quiet).
-7. Check for **Saved to your account** when signed in, or **Saved locally** in personal mode.
-8. Use **Review answers**, **Download Word**, **Copy all**, **Print / visual PDF**, **Download accessible HTML**, or **Download backup**.
-9. Signed-in work returns on another device. Browser-only personal practice returns only in the same browser profile.
+1. Choose **New practice page** for each worksheet; edit its **Practice page name**.
+2. Write in Linear; an equation’s optional **Problem number** (1.2, 3a) matches the teacher packet.
+3. **Alt+N** adds a note for explanations or thoughts.
+4. **Alt+Enter** only when you want the math read (typing stays quiet).
+5. Check for **Saved to your account** when signed in, or **Saved locally** in personal mode.
+6. Use **Review answers**, then **Download Word** to turn in editable Office Math.
+7. Signed-in work returns on another device. Browser-only personal practice returns only in the same browser profile.
 
-Downloaded JSON backups contain one assignment or practice page and remain available even when an answer is incomplete or invalid.
+Advanced tools (Classes, MathML copy, JSON backup, templates, and more) stay in the code behind
+`STUDENT_SIMPLE_UI` in `src/lib/uiFlags.ts` — flip that flag to `false` to restore them.
 
 ## Automated keyboard check
 
@@ -92,6 +90,18 @@ npm.cmd run test:word
 ```
 
 Optional: `PAD_URL=http://localhost:5173/ npm.cmd run test:sr`
+
+Before a release, install the additional Playwright engines once, build, and run the
+production cross-browser smoke test. It covers Chrome, Edge (when installed), Firefox,
+and WebKit as a Safari-engine check:
+
+```bash
+npx.cmd playwright install firefox webkit
+npm.cmd run build
+npm.cmd run test:browsers
+```
+
+WebKit on Windows does not replace a short VoiceOver check in Safari on macOS/iOS.
 
 ## Accessibility checklist
 

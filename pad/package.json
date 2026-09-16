@@ -10,7 +10,10 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:sr": "node scripts/sr-student-walkthrough.mjs",
-    "verify": "npm run lint && npm run build && npm run test:sr",
+    "test:axe": "node scripts/axe-scan.mjs",
+    "test:structure": "node scripts/a11y-structure.mjs",
+    "test:browsers": "node scripts/cross-browser-smoke.mjs",
+    "verify": "npm run lint && npm run build && npm run test:sr && npm run test:axe && npm run test:structure",
     "test:cloud": "node scripts/cloud-workspace-test.mjs",
     "test:word": "node scripts/word-export-test.mjs"
   },
@@ -22,6 +25,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@types/katex": "^0.16.8",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",

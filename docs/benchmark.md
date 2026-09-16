@@ -74,7 +74,7 @@ Custom equation zones with `⟦eq⟧...⟦/eq⟧` delimiters, KaTeX overlay, ARI
 - **Workflow:** Visual equation builder with LaTeX-like shortcuts **inside** equation mode only.
 - **Edit:** Click equation to re-enter editor.
 - **Speech:** Google improving screen reader support for native equations.
-- **Gap:** No full LaTeX Linear mode; no `\sqrt{x+3}` string entry; different muscle memory from Word/DigiMath.
+- **Gap:** No full LaTeX Linear mode; no `\sqrt{x+3}` string entry; different muscle memory from Word.
 
 ---
 

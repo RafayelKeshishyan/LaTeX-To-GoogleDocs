@@ -6,35 +6,27 @@
   'use strict';
 
   const FRAME_ID = 'latex-gdocs-editor-frame';
-  const OPEN_ANNOUNCE_FIRST = 'LaTeX equation editor. Linear mode.';
-  const OPEN_ANNOUNCE_REPEAT = 'Linear mode.';
   let initialized = false;
   // The equation F2 opened, so Alt+Enter can overwrite it in place.
   let editTarget = null;
 
   function openEditorPanel(mode, payload = {}) {
-    const reopening = EditorPanel.isVisible();
-    const announce =
-      payload.announce ||
-      (reopening || mode === 'edit'
-        ? OPEN_ANNOUNCE_REPEAT
-        : OPEN_ANNOUNCE_FIRST);
-
-    DocumentBridge.announce(announce, { priority: 'assertive' });
-
     return EditorPanel.show({
       mode,
       latex: mode === 'edit' ? payload.latex || '' : '',
       clearLatex: mode === 'new',
       focusEditor: payload.focusEditor !== false,
-      announce
+      announce: payload.announce || ''
     });
   }
 
-  function triggerInsertInPanel() {
+  function triggerInsertInPanel(options = {}) {
     const frame = document.getElementById(FRAME_ID);
     if (frame?.contentWindow) {
-      frame.contentWindow.postMessage({ type: 'LATEX_GDOCS_TRIGGER_INSERT' }, '*');
+      frame.contentWindow.postMessage(
+        { type: 'LATEX_GDOCS_TRIGGER_INSERT', newLine: options.newLine === true },
+        '*'
+      );
       return true;
     }
     return false;
@@ -75,7 +67,7 @@
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      triggerInsertInPanel();
+      triggerInsertInPanel({ newLine: e.shiftKey });
       return false;
     }
 
@@ -100,7 +92,7 @@
         const frame = document.getElementById(FRAME_ID);
         frame?.contentWindow?.postMessage({ type: 'LATEX_GDOCS_NEW_EQUATION' }, '*');
         EquationNavigator.setComposingNew(true);
-        openEditorPanel('new', { announce: OPEN_ANNOUNCE_REPEAT, focusEditor: true });
+        openEditorPanel('new', { focusEditor: true });
       } else {
         EquationNavigator.setComposingNew(true);
         openEditorPanel('new');
@@ -135,10 +127,7 @@
         editTarget = nearest;
         openEditorPanel('edit', {
           latex: nearest.latex,
-          focusEditor: true,
-          announce:
-            `Editing equation ${nearest.equationNumber || ''}. ` +
-            LatexSpeech.toNaturalSpeech(nearest.latex)
+          focusEditor: true
         });
         EquationNavigator.setComposingNew(false);
       }, 100);
@@ -250,7 +239,6 @@
   function focusDocumentFromPanel() {
     blurPanelInput();
     DocsUtils.focusEditor();
-    DocumentBridge.announce('Document focused. Panel stays open.', { priority: 'assertive' });
   }
 
   function blurPanelInput() {
@@ -340,12 +328,6 @@
     const clickObserver = new MutationObserver(() => attachEquationClickHandler());
     const editorRoot = document.querySelector('.kix-appview-editor') || document.body;
     clickObserver.observe(editorRoot, { childList: true, subtree: true });
-    DocumentBridge.announce(
-      'LaTeX for Google Docs ready. Alt equals opens the editor. ' +
-        'Up or Down arrow moves between equations. ' +
-        'Control Shift R reads the current equation. F2 edits. Control Shift Delete removes it. ' +
-        'Alt D returns to the document from the panel.'
-    );
     console.log('[LaTeX-GDocs] Editor panel bridge initialized');
   }
 
@@ -379,7 +361,8 @@
           DocumentBridge.insertLatex(msg.latex, msg.pngDataUrl, {
             skipImage: msg.skipImage !== false,
             skipAnnounce: msg.skipAnnounce === true,
-            fastReturn: msg.fastReturn === true
+            fastReturn: msg.fastReturn === true,
+            newLine: msg.newLine === true
           }).then(sendResponse);
           return true;
         }

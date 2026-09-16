@@ -45,8 +45,6 @@
   const previewSpeech = document.getElementById('preview-speech');
   const statusEl = document.getElementById('status');
   const equationList = document.getElementById('equation-list');
-  const srKeystroke = document.getElementById('sr-keystroke');
-  const srPreview = document.getElementById('sr-preview');
   const srStatus = document.getElementById('sr-status');
   const speechOutputEl = document.getElementById('speech-output');
   const templateList = document.getElementById('template-list');
@@ -60,33 +58,38 @@
     statusEl.className = 'status' + (type ? ' ' + type : '');
   }
 
+  /**
+   * Say something exactly once.
+   *
+   * A screen reader announces an element when focus lands on it, so moving
+   * focus *and* writing a live region reads the same text twice. Callers that
+   * pass focusEl want the user parked on that text so they can review it word
+   * by word; everyone else gets the live region and keeps their place in the
+   * editor.
+   */
   function announceToUser(text, options = {}) {
     const message = (text || '').trim();
-    if (!message) return;
+    if (!message && !options.latex) return;
 
-    if (typeof SpeechOutput !== 'undefined') {
-      if (options.immediate && SpeechOutput.speakNow) {
-        SpeechOutput.speakNow(message);
-      } else {
-        SpeechOutput.speak(message);
-      }
-    }
-
+    setStatus(options.speech || message, options.statusClass || (options.priority === 'assertive' ? 'alert' : ''));
     if (speechOutputEl) {
       speechOutputEl.textContent = message;
     }
 
-    statusEl.textContent = message;
-    if (options.priority === 'assertive') {
-      statusEl.className = 'status alert';
+    if (options.focusEl) {
+      options.focusEl.setAttribute('tabindex', '-1');
+      options.focusEl.focus({ preventScroll: true });
+    } else {
+      SpeechOutput.announceInRegion(srStatus, message, {
+        latex: options.latex,
+        fallback: options.speech
+      });
     }
 
-    srStatus.textContent = message;
-
-    const focusTarget = options.focusEl || (options.skipFocus ? null : speechOutputEl || statusEl);
-    if (focusTarget) {
-      focusTarget.setAttribute('tabindex', '-1');
-      focusTarget.focus({ preventScroll: true });
+    if (options.immediate) {
+      SpeechOutput.speakNow(options.speech || message);
+    } else {
+      SpeechOutput.speak(options.speech || message);
     }
   }
 
@@ -94,23 +97,20 @@
     announceToUser(text, { priority: 'assertive' });
   }
 
+  /**
+   * NVDA, JAWS and Narrator all echo typed characters in a text box by
+   * default, so this only drives the extension's own voice. In screen reader
+   * mode SpeechOutput stays quiet and the native echo is the only one heard.
+   */
   function announceKeystroke(char) {
     if (!announceKeystrokes || !char || char.length !== 1) return;
-    const spoken = LatexSpeech.keystroke(char);
-    srKeystroke.textContent = spoken;
-    if (typeof SpeechOutput !== 'undefined' && SpeechOutput.speakKeystroke) {
-      SpeechOutput.speakKeystroke(spoken);
-    }
+    SpeechOutput.speakKeystroke(LatexSpeech.keystroke(char));
   }
 
   function announceEditingKey(key) {
     if (!announceKeystrokes) return;
     const spoken = LatexSpeech.editingKey(key);
-    if (!spoken) return;
-    srKeystroke.textContent = spoken;
-    if (typeof SpeechOutput !== 'undefined' && SpeechOutput.speakKeystroke) {
-      SpeechOutput.speakKeystroke(spoken);
-    }
+    if (spoken) SpeechOutput.speakKeystroke(spoken);
   }
 
   function focusLatexInput(mode) {
@@ -152,20 +152,22 @@
     const latex = latexInput.value;
 
     if (!latex.trim()) {
+      preview.removeAttribute('role');
+      preview.removeAttribute('aria-label');
       preview.innerHTML = '<span class="preview-placeholder">Preview appears here</span>';
-      preview.setAttribute('aria-label', 'Equation preview, empty');
       return;
     }
 
     try {
+      preview.removeAttribute('aria-label');
+      preview.removeAttribute('role');
       preview.innerHTML = '';
       window.katex.render(latex, preview, {
         throwOnError: true,
         displayMode: false
       });
-      const speech = LatexSpeech.toNaturalSpeech(latex);
-      preview.setAttribute('aria-label', 'Equation preview: ' + speech);
     } catch (err) {
+      preview.removeAttribute('role');
       preview.innerHTML = '<span class="preview-error">' + err.message + '</span>';
       preview.setAttribute('aria-label', 'Equation preview error: ' + err.message);
     }
@@ -226,10 +228,9 @@
     return dataUrl;
   }
 
-  async function insertEquation() {
+  async function insertEquation(options = {}) {
     const rawLatex = latexInput.value;
     if (!rawLatex.trim()) {
-      setStatus('Type LaTeX first.', 'error');
       announceStatus('Type LaTeX first.');
       latexInput.focus();
       return;
@@ -239,25 +240,29 @@
 
     previewSpeech.textContent = speech;
 
-    const replacing = currentMode === 'edit';
+    // Asking for a new line always means a new equation, never a replacement.
+    const newLine = options.newLine === true;
+    const replacing = currentMode === 'edit' && !newLine;
     setStatus(replacing ? 'Replacing...' : 'Inserting...');
 
     const result = await sendToDoc('insertLatex', {
       latex: rawLatex,
       replace: replacing,
+      newLine,
       skipImage: true,
       skipAnnounce: true,
       fastReturn: true
     });
 
     if (!result?.ok) {
-      const err = result?.error || 'Insert failed.';
-      setStatus(err, 'error');
-      announceToUser(err, { priority: 'assertive', skipFocus: true });
+      announceToUser(result?.error || 'Insert failed.', {
+        priority: 'assertive',
+        statusClass: 'error'
+      });
       return;
     }
 
-    setStatus(replacing ? 'Replaced.' : 'Inserted.', 'ok');
+    setStatus(replacing ? 'Replaced.' : newLine ? 'Inserted on a new line.' : 'Inserted.', 'ok');
     refreshEquationList();
   }
 
@@ -296,13 +301,24 @@
       const listSpeech = eq.latex?.trim()
         ? LatexSpeech.toNaturalSpeech(eq.latex)
         : 'empty equation';
-      li.setAttribute('aria-label', `Equation ${index + 1}: ${listSpeech}`);
-
+      li.removeAttribute('aria-label');
       const label = document.createElement('span');
       label.textContent = `Equation ${index + 1}`;
+      const math = document.createElement('span');
+      math.setAttribute('role', 'math');
+      math.style.cssText =
+        'position:absolute;width:1px;height:1px;overflow:hidden;white-space:nowrap;';
+      const mathml = typeof LatexMathML !== 'undefined' ? LatexMathML.fromLatex(eq.latex) : '';
+      if (mathml) {
+        math.innerHTML = mathml;
+      } else {
+        math.textContent = listSpeech;
+      }
       const code = document.createElement('code');
       code.textContent = eq.latex || '(empty)';
+      code.setAttribute('aria-hidden', 'true');
       li.appendChild(label);
+      li.appendChild(math);
       li.appendChild(code);
 
       function selectEquation() {
@@ -342,7 +358,12 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'template-btn';
-        btn.innerHTML = ex.label + ' <code>' + ex.latex + '</code>';
+        btn.textContent = '';
+        btn.appendChild(document.createTextNode(ex.label + ' '));
+        const code = document.createElement('code');
+        code.textContent = ex.latex;
+        code.setAttribute('aria-hidden', 'true');
+        btn.appendChild(code);
         btn.addEventListener('click', () => {
           latexInput.value = ex.latex;
           updatePreview();
@@ -385,7 +406,7 @@
       return;
     }
     if (event.data?.type === 'LATEX_GDOCS_TRIGGER_INSERT') {
-      insertEquation();
+      insertEquation({ newLine: event.data.newLine === true });
       return;
     }
     if (event.data?.type === 'LATEX_GDOCS_NEW_EQUATION') {
@@ -431,8 +452,11 @@
     }
     const speech = LatexSpeech.toNaturalSpeech(latex);
     previewSpeech.textContent = speech;
-    preview.setAttribute('aria-label', 'Equation preview: ' + speech);
-    announceToUser(speech, { priority: 'assertive', focusEl: previewSpeech });
+    announceToUser('', {
+      priority: 'assertive',
+      latex,
+      speech
+    });
   }
 
   latexInput.addEventListener('input', () => {
@@ -450,7 +474,7 @@
     if (e.altKey && e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
-      insertEquation();
+      insertEquation({ newLine: e.shiftKey });
       return;
     }
 

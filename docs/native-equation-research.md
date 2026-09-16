@@ -153,7 +153,7 @@ If native conversion succeeds:
 
 1. Does Advanced Docs API support `InsertEquation` request type?
 2. Can MathPad's approach be replicated in open-source add-on code?
-3. Does native equation speech match ClearSpeak output students learn on DigiMath?
+3. Does native equation speech match the ClearSpeak output students learn in this project?
 4. Do native equations survive copy/paste between Docs and Word?
 5. Will Google add official LaTeX Linear mode to Docs equation editor?
 
@@ -163,7 +163,6 @@ If native conversion succeeds:
 
 - [Google Docs equation screen reader support](https://support.google.com/docs/answer/16712774)
 - [Microsoft math accessibility trees](https://devblogs.microsoft.com/math-in-office/math-accessibility-trees/)
-- [Access Digi Math](https://accessuci.ics.uci.edu/digimath/)
 - [benchmark.md](benchmark.md) — MathPad partial pass analysis
 
 ---

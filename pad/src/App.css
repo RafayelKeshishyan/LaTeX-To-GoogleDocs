@@ -248,14 +248,14 @@ h3 {
   gap: 0.5rem;
 }
 
-.block-list li {
+.block-list > .block-select {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
   padding: 0.35rem;
 }
 
-.block-list li.selected {
+.block-list > .block-select.selected {
   border-color: var(--brand);
   box-shadow: 0 0 0 2px var(--brand);
 }
@@ -273,7 +273,8 @@ h3 {
 }
 
 .prose-input,
-.linear-editor textarea {
+.linear-editor textarea,
+.linear-editor .linear-input {
   width: 100%;
   font: inherit;
   font-family: var(--font-mono);
@@ -503,15 +504,15 @@ h3 {
   overflow-y: auto;
 }
 
-.review-list li {
+.review-list > .block-select {
   border: 1px solid #d5d0c6;
   border-radius: 6px;
   background: #faf9f6;
   padding: 0.25rem;
 }
 
-.review-list li.selected,
-.review-list [aria-selected='true'] {
+.review-list > .block-select.selected,
+.review-list [data-selected='true'] {
   background: #d7efe4;
   border-color: #0b3d2e;
   box-shadow: 0 0 0 3px #0b3d2e;

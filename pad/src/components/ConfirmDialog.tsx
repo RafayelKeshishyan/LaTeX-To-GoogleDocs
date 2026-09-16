@@ -18,15 +18,18 @@ export function ConfirmDialog({
   onCancel,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  function closeDialog(action: () => void) {
+    if (dialogRef.current?.open) dialogRef.current.close();
+    action();
+  }
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!open || !dialog) return;
-    if (!dialog.open) dialog.showModal();
-    const moveFocus = () => headingRef.current?.focus();
-    moveFocus();
-    const frame = requestAnimationFrame(moveFocus);
+    const frame = requestAnimationFrame(() => {
+      if (!dialog.open) dialog.showModal();
+    });
     return () => {
       cancelAnimationFrame(frame);
       if (dialog.open) dialog.close();
@@ -39,23 +42,26 @@ export function ConfirmDialog({
     <dialog
       ref={dialogRef}
       className="class-dialog confirm-dialog"
-      role="alertdialog"
-      aria-labelledby="confirm-heading"
-      aria-describedby="confirm-message"
+      tabIndex={-1}
+      aria-label="Confirmation"
       onCancel={(e) => {
         e.preventDefault();
-        onCancel();
+        closeDialog(onCancel);
       }}
     >
-      <h2 ref={headingRef} id="confirm-heading" tabIndex={-1}>
+      <h2 id="confirm-heading" tabIndex={-1} autoFocus>
         {title}
       </h2>
-      <p id="confirm-message">{message}</p>
-      <div className="toolbar" role="group" aria-label="Confirmation actions">
-        <button type="button" onClick={onCancel}>
+      <p id="confirm-message" aria-hidden="true">{message}</p>
+      <div className="toolbar">
+        <button type="button" onClick={() => closeDialog(onCancel)}>
           Cancel
         </button>
-        <button type="button" className="danger-button" onClick={onConfirm}>
+        <button
+          type="button"
+          className="danger-button"
+          onClick={() => closeDialog(onConfirm)}
+        >
           {confirmLabel}
         </button>
       </div>

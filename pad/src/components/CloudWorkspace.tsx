@@ -62,19 +62,25 @@ function friendlyAuthError(error: unknown): string {
 function WorkspaceSkipLink() {
   function skipToLinear(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
-    const editor = document.querySelector<HTMLTextAreaElement>('.linear-editor textarea');
+    const editor = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+      '.linear-editor .linear-input',
+    );
     if (editor) {
       editor.focus();
       editor.setSelectionRange(editor.value.length, editor.value.length);
       return;
     }
-    document
-      .querySelector<HTMLButtonElement>('.prose-edit .toolbar button')
-      ?.click();
+    // A note is being edited, so there is no Linear field yet. Match the in-app skip
+    // link and move to an equation instead of leaving focus where it was.
+    const newEquation = document.querySelector<HTMLButtonElement>(
+      '[aria-label="Add or change work"] button',
+    );
+    if (newEquation) newEquation.click();
+    else document.getElementById('write-pane')?.focus();
   }
 
   return (
-    <a className="skip-link" href="#linear-focus-target" onClick={skipToLinear}>
+    <a className="skip-link" href="#write-pane" onClick={skipToLinear}>
       Skip to Linear
     </a>
   );
@@ -89,9 +95,14 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     headingRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     document.title = `${intent === 'sign-in' ? 'Sign in' : 'Create an account'} — Digi Math Pad`;
   }, [intent]);
 
@@ -104,6 +115,9 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
     setIntent(next);
     setMessage('');
     setIsError(false);
+    requestAnimationFrame(() => {
+      (next === 'create' ? nameRef.current : emailRef.current)?.focus();
+    });
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -142,7 +156,9 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
   }
 
   return (
-    <main className="auth-shell" aria-labelledby="account-heading">
+    // Stable landmark name: labelling by the h1 would make JAWS say "Sign in region,
+    // Sign in button" when focus enters the page.
+    <main className="auth-shell" aria-label="Account">
       <section className="auth-card">
         <p className="product-name">Digi Math Pad</p>
         <h1 id="account-heading" ref={headingRef} tabIndex={-1}>
@@ -157,20 +173,12 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
           Continue with personal practice
         </button>
 
-        <div className="account-choice" role="group" aria-label="Account action">
+        <div className="account-choice">
           <button
             type="button"
-            aria-pressed={intent === 'sign-in'}
-            onClick={() => changeIntent('sign-in')}
+            onClick={() => changeIntent(intent === 'sign-in' ? 'create' : 'sign-in')}
           >
-            Sign in
-          </button>
-          <button
-            type="button"
-            aria-pressed={intent === 'create'}
-            onClick={() => changeIntent('create')}
-          >
-            Create account
+            {intent === 'sign-in' ? 'Create account' : 'Sign in'}
           </button>
         </div>
 
@@ -179,6 +187,7 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
             <>
               <label htmlFor="account-name">Name</label>
               <input
+                ref={nameRef}
                 id="account-name"
                 value={displayName}
                 autoComplete="name"
@@ -190,6 +199,7 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
 
           <label htmlFor="account-email">Email</label>
           <input
+            ref={emailRef}
             id="account-email"
             type="email"
             value={email}
@@ -222,8 +232,13 @@ function AuthScreen({ onUsePersonal }: { onUsePersonal: () => void }) {
             </p>
           )}
 
+          {/* Named distinctly from the alternate-form action above. */}
           <button type="submit" disabled={busy}>
-            {busy ? 'Please wait…' : intent === 'sign-in' ? 'Sign in' : 'Create account'}
+            {busy
+              ? 'Please wait…'
+              : intent === 'sign-in'
+                ? 'Sign in to your account'
+                : 'Create your account'}
           </button>
         </form>
       </section>
@@ -317,7 +332,7 @@ function ChoiceScreen({
   }, [heading]);
 
   return (
-    <main className="auth-shell" aria-labelledby="workspace-choice-heading">
+    <main className="auth-shell" aria-label="Account">
       <section className="auth-card">
         <h1 id="workspace-choice-heading" ref={headingRef} tabIndex={-1}>
           {heading}
@@ -554,7 +569,7 @@ function SignedInWorkspace({ session }: { session: Session }) {
   return (
     <>
       <WorkspaceSkipLink />
-      <section className="account-bar" aria-labelledby="signed-in-heading">
+      <aside className="account-bar">
         <div>
           <p id="signed-in-heading" className="account-bar-title">Account</p>
           <p>
@@ -584,7 +599,7 @@ function SignedInWorkspace({ session }: { session: Session }) {
         <button type="button" onClick={() => void getSupabase().auth.signOut()}>
           Sign out
         </button>
-      </section>
+      </aside>
       <App
         key={editorKey}
         showSkipLink={false}
@@ -607,7 +622,7 @@ function PersonalWorkspace({ onReturn }: { onReturn: () => void }) {
   return (
     <>
       <WorkspaceSkipLink />
-      <section className="account-bar" aria-labelledby="personal-practice-heading">
+      <aside className="account-bar">
         <div>
           <p id="personal-practice-heading" className="account-bar-title">
             Personal practice
@@ -617,7 +632,7 @@ function PersonalWorkspace({ onReturn }: { onReturn: () => void }) {
         <button type="button" onClick={onReturn}>
           Return to account sign-in
         </button>
-      </section>
+      </aside>
       <App
         showSkipLink={false}
         storageScope={PERSONAL_SCOPE}

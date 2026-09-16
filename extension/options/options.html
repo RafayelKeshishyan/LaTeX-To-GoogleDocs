@@ -46,6 +46,27 @@
     #saved-msg { color: #137333; margin-top: 8px; font-size: 13px; display: none; }
     .help { font-size: 12px; color: #5f6368; margin-top: 4px; }
     a { color: #1a73e8; }
+    .shortcut-list {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 6px 16px;
+      margin: 12px 0 4px;
+      font-size: 13px;
+    }
+    .shortcut-list dt {
+      font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .shortcut-list dd { color: #3c4043; }
+    fieldset {
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      padding: 12px 14px 2px;
+      margin-bottom: 12px;
+    }
+    legend { font-size: 13px; font-weight: 500; padding: 0 6px; }
+    fieldset .help { margin: -8px 0 12px 26px; }
   </style>
 </head>
 <body>
@@ -54,35 +75,60 @@
 
   <form id="settings-form">
     <h2>Keyboard shortcuts</h2>
-    <p class="help">Alt+= opens the editor. Alt+Enter inserts from the panel. Ctrl+Shift+R reads the equation at the cursor in the document.</p>
+    <p class="help">These keys are built in and work inside any Google Doc. To change the browser-level shortcut that opens the editor, visit chrome://extensions/shortcuts.</p>
 
-    <label>
-      <span>Open equation editor</span>
-      <input type="text" id="shortcut-insert" value="Alt+=">
-    </label>
-    <label>
-      <span>Insert into document (side panel)</span>
-      <input type="text" id="shortcut-commit" value="Alt+Enter">
-    </label>
-    <label>
-      <span>Edit equation near cursor</span>
-      <input type="text" id="shortcut-edit" value="F2">
-    </label>
-    <label>
-      <span>Open equation editor (fallback)</span>
-      <input type="text" id="shortcut-source" value="Ctrl+Shift+L">
-    </label>
-    <label>
-      <span>Fallback open editor</span>
-      <input type="text" id="shortcut-fallback" value="Ctrl+Alt+M">
-    </label>
+    <dl class="shortcut-list">
+      <dt>Alt+=</dt>
+      <dd>Open the equation editor</dd>
+
+      <dt>Ctrl+Alt+M</dt>
+      <dd>Open the equation editor (fallback if Alt+= is taken)</dd>
+
+      <dt>Alt+Enter</dt>
+      <dd>Insert the equation at the cursor</dd>
+
+      <dt>Alt+Shift+Enter</dt>
+      <dd>Start a new line below the cursor and insert the equation there</dd>
+
+      <dt>Up / Down arrow</dt>
+      <dd>Move a line and read any equation on it</dd>
+
+      <dt>F2</dt>
+      <dd>Edit the equation at the cursor, replacing it in place</dd>
+
+      <dt>Ctrl+Shift+R</dt>
+      <dd>Read the equation at the cursor aloud</dd>
+
+      <dt>Ctrl+Shift+Delete</dt>
+      <dd>Delete the equation at the cursor</dd>
+
+      <dt>Escape</dt>
+      <dd>Close the editor and return to the document</dd>
+    </dl>
+
+    <h2>Speech output</h2>
+    <fieldset>
+      <legend>How should the extension speak math?</legend>
+
+      <label class="checkbox-label">
+        <input type="radio" name="speech-mode" value="extension">
+        <span>Chrome speech (the original voice)</span>
+      </label>
+      <p class="help">Uses Chrome's speech engine. Does not move the cursor back to Linear LaTeX. This is the voice that worked before NVDA/JAWS were in the mix. Use it when no screen reader is running, or when Google Docs' own "application / document content" speech is too noisy.</p>
+
+      <label class="checkbox-label">
+        <input type="radio" name="speech-mode" value="screenReader" checked>
+        <span>My screen reader (NVDA, JAWS, Narrator, VoiceOver)</span>
+      </label>
+      <p class="help">The extension writes a live region; your screen reader speaks it. After Alt+Enter the caret stays in the document. Google Docs itself will still say "application" and "document content" when the cursor enters the document &mdash; that is NVDA/JAWS reading Google Docs, and the extension cannot turn it off.</p>
+    </fieldset>
 
     <h2>Accessibility</h2>
     <label class="checkbox-label">
       <input type="checkbox" id="announce-keystrokes" checked>
       <span>Announce LaTeX keystrokes in the equation editor (linear mode)</span>
     </label>
-    <p class="help">Natural math speech plays when you press Alt+Enter or click Insert at cursor, or when you click Read aloud.</p>
+    <p class="help">Turn this off if your screen reader already reads each character as you type it, which most do by default.</p>
     <label class="checkbox-label">
       <input type="checkbox" id="equation-nav-announce" checked>
       <span>Announce natural math speech when arrowing through equations in the document</span>
@@ -91,9 +137,6 @@
     <button type="submit">Save settings</button>
     <p id="saved-msg">Settings saved.</p>
   </form>
-
-  <h2>Resources</h2>
-  <p><a href="https://accessuci.ics.uci.edu/digimath/" target="_blank">Access Digi Math</a></p>
 
   <script src="options.js"></script>
 </body>

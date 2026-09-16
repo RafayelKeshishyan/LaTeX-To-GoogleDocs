@@ -1,6 +1,6 @@
 # Tutorial 4 — Quadratic Formula
 
-**DigiMath Tutorial 4** | [Access Digi Math](https://accessuci.ics.uci.edu/digimath/)
+**Tutorial 4 — Quadratic formula**
 
 ## Learning objective
 

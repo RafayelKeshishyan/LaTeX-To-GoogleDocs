@@ -20,7 +20,8 @@ const SECTIONS: HelpSection[] = [
       'Alt+Equals adds an equation, or focuses the empty one.',
       'Alt+N adds a note for explanations or thoughts.',
       'Alt+Delete removes the equation or note you are editing.',
-      'Optional Problem number matches the worksheet (1.2, 3a). Leave blank to use Equation or Note numbers.',
+      'For equations, optional Problem number matches the worksheet (1.2, 3a). Leave blank to use Equation numbers.',
+      'Alt+Enter and Escape work from Problem number as well as Linear.',
     ],
   },
   {
@@ -35,10 +36,9 @@ const SECTIONS: HelpSection[] = [
     id: 'help-move',
     title: 'Move',
     items: [
-      'In Linear, arrows only edit.',
-      'Alt+Up or Alt+Down changes equation.',
-      'Your work lists answers in order. Skip to Your work, then Enter. Arrows browse; Enter edits.',
-      'Notes sit with equations in that same list.',
+      'In Linear, Up or Down moves to the previous or next equation or note.',
+      'In a note, use Alt+Up or Alt+Down to move between items.',
+      'In Your work or Review, arrows move and Enter edits.',
     ],
   },
   {
@@ -46,7 +46,7 @@ const SECTIONS: HelpSection[] = [
     title: 'Correct a mistake',
     items: [
       'Invalid math stays on the field with a short error.',
-      'Control+Shift+Z undoes remove, clear, or page delete.',
+      'Control+Shift+Z undoes remove or page changes.',
       'Control+Z in Linear undoes typing.',
     ],
   },
@@ -56,7 +56,7 @@ const SECTIONS: HelpSection[] = [
     items: [
       'Alt+R opens Review. Arrows move; Enter edits; Escape closes.',
       'Control+S saves your draft. Work also autosaves.',
-      'Export and backup makes downloadable copies.',
+      'Download Word makes an editable Word file to turn in.',
     ],
   },
 ];
@@ -68,10 +68,9 @@ export function HelpDialog({ open, onClose }: Props) {
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!open || !dialog) return;
-    if (!dialog.open) dialog.showModal();
-    const moveFocus = () => headingRef.current?.focus();
-    moveFocus();
-    const frame = requestAnimationFrame(moveFocus);
+    const frame = requestAnimationFrame(() => {
+      if (!dialog.open) dialog.showModal();
+    });
     return () => {
       cancelAnimationFrame(frame);
       if (dialog.open) dialog.close();
@@ -83,9 +82,14 @@ export function HelpDialog({ open, onClose }: Props) {
     if (!dialog) return [];
     return Array.from(
       dialog.querySelectorAll<HTMLElement>(
-        'h2[tabindex], h3[tabindex], button:not([disabled])',
+        'h3[tabindex], button:not([disabled])',
       ),
     );
+  }
+
+  function closeDialog() {
+    if (dialogRef.current?.open) dialogRef.current.close();
+    onClose();
   }
 
   function onDialogKeyDown(e: KeyboardEvent<HTMLDialogElement>) {
@@ -115,7 +119,7 @@ export function HelpDialog({ open, onClose }: Props) {
       aria-labelledby="help-heading"
       onCancel={(e) => {
         e.preventDefault();
-        onClose();
+        closeDialog();
       }}
       onKeyDown={onDialogKeyDown}
     >
@@ -124,11 +128,12 @@ export function HelpDialog({ open, onClose }: Props) {
           ref={headingRef}
           id="help-heading"
           tabIndex={-1}
+          autoFocus
           aria-describedby="help-intro"
         >
           Quick help
         </h2>
-        <button type="button" onClick={onClose}>
+        <button type="button" onClick={closeDialog}>
           Close help and return
         </button>
       </div>
@@ -139,8 +144,11 @@ export function HelpDialog({ open, onClose }: Props) {
 
       {SECTIONS.map((section) => {
         const listId = `${section.id}-list`;
+        // The section is left unnamed on purpose: naming it makes it a landmark whose
+        // name repeats the focusable heading immediately inside it.
         return (
-          <section key={section.id} className="help-section" aria-labelledby={section.id}>
+          <section key={section.id} className="help-section">
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
             <h3 id={section.id} tabIndex={0} aria-describedby={listId}>
               {section.title}
             </h3>
@@ -152,12 +160,6 @@ export function HelpDialog({ open, onClose }: Props) {
           </section>
         );
       })}
-
-      <div className="toolbar" role="group" aria-label="Help actions">
-        <button type="button" onClick={onClose}>
-          Close help and return
-        </button>
-      </div>
     </dialog>
   );
 }

@@ -1,6 +1,6 @@
 # Tutorial 2 — Fractions
 
-**DigiMath Tutorial 2** | [Access Digi Math](https://accessuci.ics.uci.edu/digimath/)
+**Tutorial 2 — Fractions**
 
 ## Learning objective
 
@@ -51,7 +51,7 @@ Type fractions in LaTeX using `\frac{numerator}{denominator}`.
 
 ## TVI notes
 
-- `\frac` is spoken as "backslash frac" in Linear mode — students learn this on DigiMath first.
+- `\frac` is spoken as "backslash frac" in Linear mode so students can learn the command before using Professional mode.
 - Two arguments in curly braces: `\frac{top}{bottom}`.
 - Nested fractions: `\frac{1}{\frac{2}{3}}` — save for advanced practice.
 

@@ -30,25 +30,29 @@ export function ReviewPanel({
   onHighlight,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const activeIdRef = useRef(activeId);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!open || !dialog) return;
-    if (!dialog.open) dialog.showModal();
+    const frame = requestAnimationFrame(() => {
+      dialog.querySelectorAll<HTMLElement>('[autofocus]').forEach((element) =>
+        element.removeAttribute('autofocus'),
+      );
+      const selectedRow = dialog.querySelector<HTMLElement>('[data-selected="true"]');
+      selectedRow?.setAttribute('autofocus', '');
+      if (!dialog.open) dialog.showModal();
+    });
     return () => {
+      cancelAnimationFrame(frame);
       if (dialog.open) dialog.close();
     };
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const frame = requestAnimationFrame(() => listRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [open]);
-
-  if (!open) return null;
 
   const total = equationCount(sheet);
   const empty = emptyEquationCount(sheet);
@@ -67,14 +71,21 @@ export function ReviewPanel({
       : empty > 0
         ? `${totalLabel}. ${empty} empty. Review empty answers or continue.`
         : `${totalLabel}. Ready to continue.`;
-
-  function stayInList() {
-    listRef.current?.focus();
+  function focusActiveReviewRow(id = activeIdRef.current) {
+    requestAnimationFrame(() => {
+      const row = document.getElementById(`review-${id}`);
+      if (row instanceof HTMLElement) {
+        row.focus();
+        return;
+      }
+      listRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus();
+    });
   }
 
   function focusRow(id: string) {
     onHighlight(id);
-    requestAnimationFrame(() => stayInList());
+    activeIdRef.current = id;
+    focusActiveReviewRow(id);
   }
 
   function moveFrom(id: string, delta: number) {
@@ -87,11 +98,21 @@ export function ReviewPanel({
   }
 
   function move(delta: number) {
-    moveFrom(activeId, delta);
+    moveFrom(activeIdRef.current, delta);
+  }
+
+  function closeDialog() {
+    if (dialogRef.current?.open) dialogRef.current.close();
+    onClose();
+  }
+
+  function jumpTo(id: string) {
+    if (dialogRef.current?.open) dialogRef.current.close();
+    onJump(id);
   }
 
   function onListKeyDown(e: KeyboardEvent) {
-    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.ctrlKey || e.metaKey) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       move(1);
@@ -102,6 +123,7 @@ export function ReviewPanel({
       move(-1);
       return;
     }
+    if (e.altKey) return;
     if (e.key === 'Home') {
       e.preventDefault();
       const firstId = sheet.blocks[0]?.id;
@@ -116,7 +138,7 @@ export function ReviewPanel({
     }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onJump(activeId);
+      jumpTo(activeIdRef.current);
     }
   }
 
@@ -125,23 +147,22 @@ export function ReviewPanel({
       ref={dialogRef}
       id="review-panel"
       className="review-panel review-dialog"
-      aria-labelledby="review-heading"
-      aria-describedby="review-summary"
+      aria-label="Review answers"
       onCancel={(e) => {
         e.preventDefault();
-        onClose();
+        closeDialog();
       }}
       onKeyDown={(e) => {
         if (e.key === 'Tab') {
           const focusable = Array.from(
             dialogRef.current?.querySelectorAll<HTMLElement>(
-              'button:not([disabled]), [role="listbox"]',
+              'button:not([disabled]), .review-list button[tabindex="0"]',
             ) || [],
-          ).filter((element) => element.tabIndex !== -1 || element === headingRef.current);
+          ).filter((element) => element.tabIndex !== -1);
           const first = focusable[0];
           const last = focusable.at(-1);
           const focused = document.activeElement;
-          if (e.shiftKey && (focused === headingRef.current || focused === first)) {
+          if (e.shiftKey && (focused === dialogRef.current || focused === first)) {
             e.preventDefault();
             last?.focus();
           } else if (!e.shiftKey && focused === last) {
@@ -151,7 +172,7 @@ export function ReviewPanel({
           return;
         }
         if (e.ctrlKey || e.metaKey) return;
-        if (e.target instanceof Element && e.target.closest('[role="listbox"]')) return;
+        if (e.target instanceof Element && e.target.closest('.review-list')) return;
         if (!e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
           e.preventDefault();
           move(e.key === 'ArrowDown' ? 1 : -1);
@@ -180,24 +201,22 @@ export function ReviewPanel({
       }}
     >
       <div className="review-header">
-        <h2 ref={headingRef} id="review-heading" tabIndex={-1}>
+        <h2 id="review-heading" aria-hidden="true">
           Review answers
         </h2>
-        <button type="button" onClick={onClose}>
+        <button type="button" onClick={closeDialog}>
           Close review
         </button>
       </div>
-      <p id="review-summary" className="hint">
+      <p id="review-summary" className="hint" aria-hidden="true">
         {summary}
       </p>
-      <ul
+      <div
         ref={listRef}
         className="review-list"
-        role="listbox"
-        tabIndex={0}
-        aria-label="Review all answers"
-        aria-activedescendant={activeId ? `review-${activeId}` : undefined}
-        onKeyDown={onListKeyDown}
+        role="toolbar"
+        aria-label="Answers"
+        aria-orientation="vertical"
       >
         {sheet.blocks.map((block) => {
           const label = blockListName(sheet.blocks, block.id);
@@ -207,20 +226,22 @@ export function ReviewPanel({
           if (block.type === 'prose') {
             const text = block.text.trim() || 'empty';
             return (
-              <li
+              <button
+                type="button"
                 key={block.id}
                 id={optionId}
-                role="option"
                 className={`block-select${selected ? ' selected' : ''}`}
-                aria-selected={selected}
-                aria-label={`${label}. ${withoutTrailingPunctuation(text)}.`}
-                onClick={() => onJump(block.id)}
+                tabIndex={selected ? 0 : -1}
+                data-selected={selected ? 'true' : undefined}
+                aria-label={`${label}, ${withoutTrailingPunctuation(text)}`}
+                onKeyDown={onListKeyDown}
+                onClick={() => jumpTo(block.id)}
               >
                 {label}
                 <span className="block-preview" aria-hidden="true">
                   {text}
                 </span>
-              </li>
+              </button>
             );
           }
 
@@ -231,14 +252,16 @@ export function ReviewPanel({
               ? `Invalid. ${parseError}`
               : toNaturalSpeech(block.latex);
           return (
-            <li
+            <button
+              type="button"
               key={block.id}
               id={optionId}
-              role="option"
               className={`block-select${selected ? ' selected' : ''}`}
-              aria-selected={selected}
-              aria-label={`${label}. ${withoutTrailingPunctuation(spoken)}.`}
-              onClick={() => onJump(block.id)}
+              tabIndex={selected ? 0 : -1}
+              data-selected={selected ? 'true' : undefined}
+              aria-label={`${label}, ${withoutTrailingPunctuation(spoken)}`}
+              onKeyDown={onListKeyDown}
+              onClick={() => jumpTo(block.id)}
             >
               {label}
               {block.latex.trim() ? (
@@ -250,10 +273,10 @@ export function ReviewPanel({
                   (empty — add an answer)
                 </span>
               )}
-            </li>
+            </button>
           );
         })}
-      </ul>
+      </div>
     </dialog>
   );
 }

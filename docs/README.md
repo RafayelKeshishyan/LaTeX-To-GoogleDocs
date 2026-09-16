@@ -1,8 +1,21 @@
 # LaTeX for Google Docs — Project Overview
 
+## Documentation map
+
+| Document | Purpose |
+|----------|---------|
+| [docs-extension-a11y-retrospective.md](docs-extension-a11y-retrospective.md) | **What we tried on Google Docs accessibility, what worked, what the platform blocked** |
+| [math-pad-plan.md](math-pad-plan.md) | Digi Math Pad product / stack plan |
+| [math-pad-a11y-test.md](math-pad-a11y-test.md) | Pad NVDA / JAWS / VoiceOver checklist |
+| [word-baseline.md](word-baseline.md) | Tina / Word gold-standard workflow |
+| [blind-student-test.md](blind-student-test.md) | Extension keyboard self-test |
+| [native-equation-research.md](native-equation-research.md) | Native Docs equations API gaps |
+| [benchmark.md](benchmark.md) | Competitor notes |
+
 ## Mission
 
-Help blind and low-vision students use **LaTeX math in Google Docs** with the same workflow they learn in Microsoft Word and on [Access Digi Math](https://accessuci.ics.uci.edu/digimath/).
+
+Help blind and low-vision students use **LaTeX math in Google Docs** with a workflow aligned with Microsoft Word.
 
 School systems increasingly issue Chromebooks and use Google Workspace. Existing LaTeX add-ons render equations as **images**, breaking the Linear → Professional round-trip that Word provides. Students must use "De-render Selection" in a sidebar — unusable for blind students who need keyboard-only access.
 
@@ -34,11 +47,11 @@ Delivered as:
 
 1. **Chrome extension** (primary) — Word-parity shortcuts, overlays, screen reader support.
 2. **Google Workspace add-on** (secondary) — sidebar for schools that block extensions.
-3. **Teacher resources** — worksheets aligned with DigiMath Tutorials 1–4.
+3. **Teacher resources** — introductory LaTeX practice worksheets.
 
 ## Who this serves
 
-- **Blind/low-vision students** — same Linear/Professional speech model as Word + DigiMath.
+- **Blind/low-vision students** — a Linear/Professional speech model aligned with Word.
 - **Sighted students** — LaTeX input with rendered display, no sidebar de-render.
 - **TVIs/teachers** — curriculum-aligned materials; Ctrl+Shift+L teaching mode to show LaTeX source.
 
@@ -61,9 +74,8 @@ The same test script applies on both platforms; speech wording may differ slight
 - [benchmark.md](benchmark.md) — competitor pass/fail matrix
 - [tvi-guide.md](tvi-guide.md) — teaching shortcuts and classroom tips
 - [native-equation-research.md](native-equation-research.md) — Phase 3 native equation path
-- [worksheets/](worksheets/) — DigiMath tutorial worksheets
+- [worksheets/](worksheets/) — LaTeX practice worksheets
 
 ## Links
 
-- [Access Digi Math](https://accessuci.ics.uci.edu/digimath/)
 - [Google Docs equation accessibility](https://support.google.com/docs/answer/16712774)

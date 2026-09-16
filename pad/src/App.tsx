@@ -29,14 +29,13 @@ import {
   saveLibrary,
   switchClass,
   switchSheet,
-  blockEditorName,
   blockListName,
   blockProblemLabel,
   updateActiveSheet,
 } from './lib/document';
 import { toNaturalSpeech } from './lib/latexSpeech';
-import { latexParseError, latexToMathML, renderKatexHtml } from './lib/mathml';
-import { type UndoEntry, peekUndo, popUndo, pushUndo } from './lib/undo';
+import { latexFromClipboardText, latexParseError, latexToMathML, renderKatexHtml } from './lib/mathml';
+import { type UndoEntry, popUndo, pushUndo } from './lib/undo';
 import { exportAccessibleHtml } from './lib/accessibleExport';
 import { LinearEditor } from './components/LinearEditor';
 import { MathPreview } from './components/MathPreview';
@@ -44,6 +43,7 @@ import { ReviewPanel } from './components/ReviewPanel';
 import { SheetManagement, SheetNavigation } from './components/SheetBar';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { HelpDialog } from './components/HelpDialog';
+import { STUDENT_SIMPLE_UI } from './lib/uiFlags';
 import './App.css';
 
 type SaveState = 'saving' | 'saved' | 'error';
@@ -90,6 +90,10 @@ function isEquationShortcutTarget(el: EventTarget | null): boolean {
   return el instanceof HTMLElement && !!el.closest('.edit-pane, .block-list');
 }
 
+function isWorkListTarget(el: EventTarget | null): boolean {
+  return el instanceof HTMLElement && !!el.closest('#work-list');
+}
+
 function invalidEquationCount(sheet: PadSheet): number {
   return sheet.blocks.filter(
     (block) =>
@@ -126,7 +130,10 @@ export default function App({
   saveToAccount,
 }: AppProps) {
   const boot = useMemo(() => {
-    const library = initialLibrary || loadLibrary(storageScope);
+    let library = initialLibrary || loadLibrary(storageScope);
+    if (STUDENT_SIMPLE_UI && library.activeClassId !== PRACTICE_CLASS_ID) {
+      library = switchClass(library, PRACTICE_CLASS_ID);
+    }
     const sheet = getActiveSheet(library);
     return { library, activeId: resolveActiveBlockId(sheet) };
   }, [initialLibrary, storageScope]);
@@ -151,9 +158,11 @@ export default function App({
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const newEquationButtonRef = useRef<HTMLButtonElement>(null);
   const proseRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeIdRef = useRef(activeId);
   const uploadButtonRef = useRef<HTMLButtonElement>(null);
   const reviewButtonRef = useRef<HTMLButtonElement>(null);
   const reviewOpenerRef = useRef<HTMLElement | null>(null);
@@ -165,10 +174,13 @@ export default function App({
   const confirmationOpenerRef = useRef<HTMLElement | null>(null);
   const saveErrorAnnouncedRef = useRef(false);
   const entryAnnouncedRef = useRef(false);
-  const linearTipShownRef = useRef(false);
   const libraryRef = useRef(library);
   const remoteSaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const remoteSaveTokenRef = useRef(0);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   useEffect(() => {
     libraryRef.current = library;
@@ -195,7 +207,7 @@ export default function App({
           ? 'Saved to your account.'
           : 'Saved locally.';
 
-  const editorName = active ? blockEditorName(sheet.blocks, active.id) : 'Write';
+  const editorName = active ? blockListName(sheet.blocks, active.id) : 'Write';
 
   const saveSnapshot = useCallback(
     (snapshot: PadLibrary, showMessage = false): boolean => {
@@ -261,7 +273,10 @@ export default function App({
     }
   }, [entryAnnouncement]);
 
+  // Keep the saved cursor position in sync with the focused block. This is intentional
+  // external state (the library snapshot), not a cascading render of derived UI state.
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
     setLibrary((current) => {
       const s = getActiveSheet(current);
       if (!activeId || s.activeBlockId === activeId) return current;
@@ -273,32 +288,6 @@ export default function App({
   useEffect(() => {
     document.title = `${sheet.title} — Digi Math Pad`;
   }, [sheet.title]);
-
-  useEffect(() => {
-    if (!linearFocus || linearTipShownRef.current) return;
-    const TIP_KEY = 'digimath-pad-linear-tip-v1';
-    try {
-      if (localStorage.getItem(TIP_KEY)) {
-        linearTipShownRef.current = true;
-        return;
-      }
-    } catch {
-      /* ignore */
-    }
-    linearTipShownRef.current = true;
-    try {
-      localStorage.setItem(TIP_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-    const timer = window.setTimeout(() => {
-      announce(
-        statusRef.current,
-        'Tip: Alt+Enter hears math. Alt+Up or Alt+Down changes equation.',
-      );
-    }, 700);
-    return () => window.clearTimeout(timer);
-  }, [linearFocus]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -333,9 +322,10 @@ export default function App({
   const handlersRef = useRef({
     addEquationOrFocus: (_latex?: string) => false as boolean,
     addNote: () => {},
-    removeActive: () => {},
+    removeActive: (_stayInList?: boolean, _keepToolbarFocus?: boolean) => {},
     persist: (_show?: boolean) => {},
     returnToEditor: () => {},
+    commitPreview: () => {},
     pasteAsEquation: () => {},
     copyAll: () => {},
     undo: () => {},
@@ -355,6 +345,23 @@ export default function App({
           handlersRef.current.returnToEditor();
           return;
         }
+        if (
+          ae instanceof HTMLElement &&
+          ae.closest('.edit-pane') &&
+          !ae.closest('.linear-editor .linear-input') &&
+          !ae.closest('.prose-input')
+        ) {
+          e.preventDefault();
+          handlersRef.current.returnToEditor();
+          return;
+        }
+      }
+
+      if (e.altKey && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handlersRef.current.commitPreview();
+        return;
       }
 
       if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === '=' || e.code === 'Equal')) {
@@ -390,7 +397,7 @@ export default function App({
 
       if (e.altKey && e.key === 'Delete' && isEquationShortcutTarget(e.target)) {
         e.preventDefault();
-        handlersRef.current.removeActive();
+        handlersRef.current.removeActive(isWorkListTarget(e.target));
         return;
       }
 
@@ -635,36 +642,31 @@ export default function App({
     }
   }
 
-  function removeActive() {
+  function removeActive(stayInList = false, keepToolbarFocus = false) {
     if (!active) return;
-
-    const hasContent =
-      active.type === 'equation' ? !!active.latex.trim() : !!active.text.trim();
-    if (hasContent) {
-      const label = blockListName(sheet.blocks, active.id);
-      requestConfirmation({
-        title: `Remove ${label}?`,
-        message: 'The item will be removed. You can restore it with Control+Shift+Z.',
-        confirmLabel: 'Remove',
-        onConfirm: performRemoveActive,
-      });
-      return;
-    }
-
-    performRemoveActive();
+    performRemoveActive(stayInList, keepToolbarFocus);
   }
 
-  function performRemoveActive() {
+  function performRemoveActive(stayInList = false, keepToolbarFocus = false) {
     if (!active) return;
 
     const removedLabel = blockListName(sheet.blocks, active.id);
     recordBlocksUndo(`${removedLabel} restored`, active.id);
+    if (keepToolbarFocus) {
+      // A keyed replacement editor must not reuse an earlier focus request and
+      // interrupt the removal announcement.
+      setLinearFocus(0);
+      setProseFocus(0);
+    }
 
     if (sheet.blocks.length <= 1) {
       const blank: Block = { id: newId(), type: 'equation', latex: '' };
       commitLibrary(updateActiveSheet(library, { blocks: [blank] }), blank.id);
-      requestLinearFocus();
-      announce(statusRef.current, 'Cleared. Undo with Control+Shift+Z.');
+      if (!keepToolbarFocus) {
+        if (stayInList) focusWorkRow(blank.id);
+        else requestLinearFocus();
+      }
+      announce(statusRef.current, `Removed ${removedLabel}. New blank equation.`);
       return;
     }
 
@@ -672,12 +674,16 @@ export default function App({
     const nextBlocks = sheet.blocks.filter((b) => b.id !== active.id);
     const nextActive = nextBlocks[Math.min(idx, nextBlocks.length - 1)];
     commitLibrary(updateActiveSheet(library, { blocks: nextBlocks }), nextActive.id);
-    if (nextActive.type === 'equation') requestLinearFocus();
-    else requestProseFocus();
-    announce(statusRef.current, `Removed ${removedLabel}. Undo with Control+Shift+Z.`);
+    if (!keepToolbarFocus) {
+      if (stayInList) focusWorkRow(nextActive.id);
+      else if (nextActive.type === 'equation') requestLinearFocus();
+      else requestProseFocus();
+    }
+    announce(statusRef.current, `Removed ${removedLabel}.`);
   }
 
   function undo() {
+    const stayInList = isWorkListTarget(document.activeElement);
     const { stack, entry } = popUndo(undoStack);
     if (!entry) {
       announce(statusRef.current, 'Nothing to undo.');
@@ -702,7 +708,8 @@ export default function App({
         focusId,
       );
       const restored = entry.before.find((block) => block.id === focusId);
-      if (restored?.type === 'equation') requestLinearFocus();
+      if (stayInList) focusWorkRow(focusId);
+      else if (restored?.type === 'equation') requestLinearFocus();
       else if (restored?.type === 'prose') requestProseFocus();
       else titleRef.current?.focus();
       announce(statusRef.current, entry.message);
@@ -717,9 +724,17 @@ export default function App({
 
   async function pasteAsEquation() {
     try {
-      const text = (await navigator.clipboard.readText()).trim();
-      if (!text) {
+      const raw = (await navigator.clipboard.readText()).trim();
+      if (!raw) {
         announce(statusRef.current, 'Clipboard is empty.');
+        return;
+      }
+      const text = latexFromClipboardText(raw);
+      if (!text) {
+        announce(
+          statusRef.current,
+          'Clipboard is not Linear. Use Copy Linear, or paste MathML that includes Linear source.',
+        );
         return;
       }
       addEquationOrFocus(text);
@@ -747,23 +762,46 @@ export default function App({
 
   function openReview() {
     validateLeavingBlock(activeId);
+    const focused = document.activeElement;
+    // Safari does not focus a button when it is clicked with a pointer. Keep a
+    // concrete fallback instead of recording body as the dialog opener.
     reviewOpenerRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      focused instanceof HTMLElement && focused !== document.body
+        ? focused
+        : reviewButtonRef.current;
     setReviewOpen(true);
     const firstProblem = sheet.blocks.find(
       (block) =>
         block.type === 'equation' &&
         (!block.latex.trim() || Boolean(latexParseError(block.latex))),
     );
-    const firstEq = firstProblem || sheet.blocks.find((block) => block.type === 'equation');
-    if (firstEq) setActiveId(firstEq.id);
+    const start =
+      firstProblem ||
+      sheet.blocks.find((block) => block.id === activeId) ||
+      sheet.blocks.find((block) => block.type === 'equation') ||
+      sheet.blocks[0];
+    if (start) setActiveId(start.id);
   }
 
   function closeReview() {
+    const opener = reviewOpenerRef.current || reviewButtonRef.current;
+    opener?.focus();
     setReviewOpen(false);
-    requestAnimationFrame(() =>
-      (reviewOpenerRef.current || reviewButtonRef.current)?.focus(),
-    );
+    // WebKit may perform its own dialog focus restoration after close. Correct it
+    // after the next paint only when it displaced the intended opener focus.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (
+          opener &&
+          (active === document.body ||
+            active === document.documentElement ||
+            (active instanceof HTMLElement && Boolean(active.closest('dialog:not([open])'))))
+        ) {
+          opener.focus();
+        }
+      });
+    });
   }
 
   function onSwitchSheet(sheetId: string) {
@@ -791,8 +829,22 @@ export default function App({
   }
 
   function cancelConfirmation() {
+    const opener = confirmationOpenerRef.current;
+    opener?.focus();
     setConfirmation(null);
-    requestAnimationFrame(() => confirmationOpenerRef.current?.focus());
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (
+          opener &&
+          (active === document.body ||
+            active === document.documentElement ||
+            (active instanceof HTMLElement && Boolean(active.closest('dialog:not([open])'))))
+        ) {
+          opener.focus();
+        }
+      });
+    });
   }
 
   function acceptConfirmation() {
@@ -863,8 +915,7 @@ export default function App({
     commitLibrary(next, firstBlockId(created.blocks));
     setReviewOpen(false);
     setUndoStack([]);
-    titleRef.current?.focus();
-    announce(statusRef.current, `New assignment ${created.title}.`);
+    requestAnimationFrame(() => titleRef.current?.focus());
   }
 
   function onNewPractice() {
@@ -875,8 +926,7 @@ export default function App({
     commitLibrary(next, firstBlockId(created.blocks));
     setReviewOpen(false);
     setUndoStack([]);
-    titleRef.current?.focus();
-    announce(statusRef.current, `New practice page ${created.title}.`);
+    requestAnimationFrame(() => titleRef.current?.focus());
   }
 
   function onDuplicateSheet() {
@@ -1073,7 +1123,7 @@ export default function App({
     }
     try {
       await navigator.clipboard.writeText(active.latex);
-      announce(statusRef.current, 'Source copied.');
+      announce(statusRef.current, 'Linear copied. Paste back into Linear or elsewhere.');
     } catch {
       announce(statusRef.current, 'Could not copy. Select Linear and copy manually.');
     }
@@ -1091,7 +1141,10 @@ export default function App({
     }
     try {
       await navigator.clipboard.writeText(mathml);
-      announce(statusRef.current, 'MathML copied.');
+      announce(
+        statusRef.current,
+        'MathML copied for HTML or Word. Use Copy Linear to paste back into the Pad.',
+      );
     } catch {
       announce(statusRef.current, 'Could not copy MathML.');
     }
@@ -1121,40 +1174,41 @@ export default function App({
     apply();
   }
 
+  function focusWorkRow(id = activeIdRef.current) {
+    requestAnimationFrame(() => {
+      const row = document.getElementById(id);
+      if (row instanceof HTMLElement) {
+        row.focus();
+        return;
+      }
+      listRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus();
+    });
+  }
+
   function moveActiveBlock(direction: -1 | 1, stayInList = false) {
-    const idx = sheet.blocks.findIndex((block) => block.id === activeId);
+    const currentId = activeIdRef.current;
+    const idx = sheet.blocks.findIndex((block) => block.id === currentId);
     const currentIndex = idx < 0 ? 0 : idx;
 
-    let nextIndex = currentIndex;
-    if (stayInList) {
-      nextIndex = Math.min(
-        sheet.blocks.length - 1,
-        Math.max(0, currentIndex + direction),
-      );
-    } else {
-      // From Linear/note editing: jump to the next equation only.
-      let i = currentIndex + direction;
-      while (i >= 0 && i < sheet.blocks.length) {
-        if (sheet.blocks[i]?.type === 'equation') {
-          nextIndex = i;
-          break;
-        }
-        i += direction;
-      }
-    }
+    const nextIndex = Math.min(
+      sheet.blocks.length - 1,
+      Math.max(0, currentIndex + direction),
+    );
 
     const next = sheet.blocks[nextIndex];
     if (!next) return;
     if (nextIndex === currentIndex) {
       announce(statusRef.current, direction < 0 ? 'First item.' : 'Last item.');
+      if (stayInList) focusWorkRow();
       return;
     }
 
     validateLeavingBlock(sheet.blocks[currentIndex]?.id);
     setPreviewActive(false);
+    activeIdRef.current = next.id;
     setActiveId(next.id);
     if (stayInList) {
-      requestAnimationFrame(() => listRef.current?.focus());
+      focusWorkRow(next.id);
       return;
     }
 
@@ -1166,14 +1220,21 @@ export default function App({
   }
 
   function onListKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Tab' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      newEquationButtonRef.current?.focus();
+      return;
+    }
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      e.stopPropagation();
       moveActiveBlock(1, true);
       return;
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
+      e.stopPropagation();
       moveActiveBlock(-1, true);
       return;
     }
@@ -1181,37 +1242,33 @@ export default function App({
       e.preventDefault();
       const first = sheet.blocks[0];
       if (first) {
-        validateLeavingBlock(activeId);
+        validateLeavingBlock(activeIdRef.current);
+        activeIdRef.current = first.id;
         setActiveId(first.id);
+        focusWorkRow(first.id);
       }
-      requestAnimationFrame(() => listRef.current?.focus());
       return;
     }
     if (e.key === 'End') {
       e.preventDefault();
       const last = sheet.blocks.at(-1);
       if (last) {
-        validateLeavingBlock(activeId);
+        validateLeavingBlock(activeIdRef.current);
+        activeIdRef.current = last.id;
         setActiveId(last.id);
+        focusWorkRow(last.id);
       }
-      requestAnimationFrame(() => listRef.current?.focus());
       return;
     }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      editBlock(activeId);
+      editBlock(activeIdRef.current);
       return;
     }
     if (e.key === 'Delete') {
       e.preventDefault();
-      removeActive();
+      removeActive(true);
     }
-  }
-
-  function skipToWorkList(e: React.MouseEvent<HTMLAnchorElement>) {
-    e.preventDefault();
-    validateLeavingBlock(activeId);
-    listRef.current?.focus();
   }
 
   function clearCurrentSheet() {
@@ -1238,7 +1295,6 @@ export default function App({
       e.preventDefault();
       if (active?.type === 'equation') {
         requestLinearFocus();
-        // Quiet: the field name is enough.
       } else if (active?.type === 'prose') {
         requestProseFocus();
       } else {
@@ -1256,16 +1312,31 @@ export default function App({
   }
 
   function openHelp() {
+    const focused = document.activeElement;
     helpOpenerRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      focused instanceof HTMLElement && focused !== document.body
+        ? focused
+        : helpButtonRef.current;
     setHelpOpen(true);
   }
 
   function closeHelp() {
+    const opener = helpOpenerRef.current || helpButtonRef.current;
+    opener?.focus();
     setHelpOpen(false);
-    requestAnimationFrame(() =>
-      (helpOpenerRef.current || helpButtonRef.current)?.focus(),
-    );
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (
+          opener &&
+          (active === document.body ||
+            active === document.documentElement ||
+            (active instanceof HTMLElement && Boolean(active.closest('dialog:not([open])'))))
+        ) {
+          opener.focus();
+        }
+      });
+    });
   }
 
   useEffect(() => {
@@ -1275,6 +1346,7 @@ export default function App({
       removeActive,
       persist,
       returnToEditor,
+      commitPreview,
       pasteAsEquation,
       copyAll: async () => {
         if (invalidEquationCount(sheet)) {
@@ -1291,9 +1363,12 @@ export default function App({
   });
 
   return (
-    <div className="app">
+    <div
+      className="app"
+      data-student-simple-ui={STUDENT_SIMPLE_UI ? 'true' : 'false'}
+    >
       {showSkipLink && (
-        <a className="skip-link" href="#linear-focus-target" onClick={onSkipToLinear}>
+        <a className="skip-link" href="#write-pane" onClick={onSkipToLinear}>
           Skip to Linear
         </a>
       )}
@@ -1303,7 +1378,7 @@ export default function App({
           <p className="product-name" id="app-name">
             Digi Math Pad
           </p>
-          <p className="tagline">Practice Linear math with NVDA, JAWS, or VoiceOver</p>
+          <p className="tagline">Linear math practice, designed for NVDA, JAWS, and VoiceOver</p>
         </div>
         <div className="title-area">
           <h1 id="work-heading">{sheet.title}</h1>
@@ -1340,7 +1415,6 @@ export default function App({
           className="help-open-button"
           onClick={openHelp}
           aria-haspopup="dialog"
-          aria-expanded={helpOpen}
         >
           Quick help
         </button>
@@ -1409,26 +1483,15 @@ export default function App({
         onCancel={cancelConfirmation}
       />
 
-      <ReviewPanel
-        sheet={sheet}
-        activeId={activeId}
-        open={reviewOpen}
-        onClose={closeReview}
-        onJump={(id) => {
-          editBlock(id);
-          setReviewOpen(false);
-        }}
-        onHighlight={setActiveId}
-      />
-
-      <main id="main" className="layout" aria-labelledby="work-heading">
-        <section className="edit-pane" aria-labelledby="edit-heading">
-          <h2 id="edit-heading">{editorName}</h2>
+      <main id="main" className="layout">
+        <section className="edit-pane" id="write-pane" tabIndex={-1}>
+          <h2>{editorName}</h2>
 
           {active?.type === 'equation' ? (
             <>
               <div id="linear-focus-target">
                 <LinearEditor
+                  key={active.id}
                   latex={active.latex}
                   onChange={(latex) => updateBlock(active.id, { latex })}
                   onCommit={commitPreview}
@@ -1436,6 +1499,9 @@ export default function App({
                   error={validationErrors[active.id]}
                   focusRequest={linearFocus}
                   caret={linearCaret}
+                  normalizePaste={latexFromClipboardText}
+                  singleLine={STUDENT_SIMPLE_UI}
+                  onNavigate={(direction) => moveActiveBlock(direction)}
                 />
               </div>
               <div className="problem-label-field">
@@ -1447,7 +1513,7 @@ export default function App({
                   maxLength={24}
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder="Optional, e.g. 1.2"
+                  placeholder=""
                   onChange={(e) =>
                     updateBlock(active.id, {
                       label: e.target.value.slice(0, 24),
@@ -1458,10 +1524,6 @@ export default function App({
                   Match your worksheet (1.2, 3a). Leave blank for Equation numbers.
                 </p>
               </div>
-              <a className="skip-link" href="#work-list" onClick={skipToWorkList}>
-                Skip to Your work
-              </a>
-
               <h2>Hear math</h2>
               <p className="hint" aria-hidden="true">
                 Alt+Enter hears the math with your screen reader. Escape returns to Linear.
@@ -1484,45 +1546,51 @@ export default function App({
                 </button>
               </div>
 
-              <details className="kbd-help equation-more-actions">
-                <summary>More equation actions</summary>
-                <div className="toolbar" role="group" aria-label="More equation actions">
-                  <button type="button" onClick={copyLatex}>
-                    Copy source
-                  </button>
-                  <button type="button" onClick={copyMathML}>
-                    Copy MathML
-                  </button>
+              {!STUDENT_SIMPLE_UI && (
+                <details className="kbd-help equation-more-actions">
+                  <summary>More equation actions</summary>
+                  <div className="toolbar" role="group" aria-label="More equation actions">
+                    <button type="button" onClick={copyLatex}>
+                      Copy Linear
+                    </button>
+                    <button type="button" onClick={copyMathML}>
+                      Copy MathML for HTML
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void pasteAsEquation()}
+                    >
+                      Paste as equation{' '}
+                      <span className="kbd" aria-hidden="true">Ctrl+Shift+V</span>
+                    </button>
+                  </div>
+                </details>
+              )}
+
+              {!STUDENT_SIMPLE_UI && (
+                <>
                   <button
                     type="button"
-                    onClick={() => void pasteAsEquation()}
+                    className="templates-toggle"
+                    aria-expanded={showTemplates}
+                    aria-controls={showTemplates ? 'practice-examples' : undefined}
+                    onClick={() => setShowTemplates((v) => !v)}
                   >
-                    Paste as equation{' '}
-                    <span className="kbd" aria-hidden="true">Ctrl+Shift+V</span>
+                    {showTemplates ? 'Hide practice examples' : 'Show practice examples'}
                   </button>
-                </div>
-              </details>
-
-              <button
-                type="button"
-                className="templates-toggle"
-                aria-expanded={showTemplates}
-                aria-controls={showTemplates ? 'practice-examples' : undefined}
-                onClick={() => setShowTemplates((v) => !v)}
-              >
-                {showTemplates ? 'Hide practice examples' : 'Show practice examples'}
-              </button>
-              {showTemplates && (
-                <ul id="practice-examples" className="templates">
-                  {MATH_TEMPLATES.map((t) => (
-                    <li key={t.latex}>
-                      <button type="button" onClick={() => applyTemplate(t.latex)}>
-                        {t.label}
-                        <code aria-hidden="true">{t.latex}</code>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                  {showTemplates && (
+                    <ul id="practice-examples" className="templates">
+                      {MATH_TEMPLATES.map((t) => (
+                        <li key={t.latex}>
+                          <button type="button" onClick={() => applyTemplate(t.latex)}>
+                            {t.label}
+                            <code aria-hidden="true">{t.latex}</code>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </>
           ) : active?.type === 'prose' ? (
@@ -1537,82 +1605,61 @@ export default function App({
                 aria-label={editorName}
                 onChange={(e) => updateBlock(active.id, { text: e.target.value })}
               />
-              <div className="problem-label-field">
-                <label htmlFor="problem-label-note">Problem number</label>
-                <input
-                  id="problem-label-note"
-                  type="text"
-                  value={active.label || ''}
-                  maxLength={24}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="Optional, e.g. 1.2"
-                  onChange={(e) =>
-                    updateBlock(active.id, {
-                      label: e.target.value.slice(0, 24),
-                    })
-                  }
-                />
-                <p className="hint" aria-hidden="true">
-                  Match your worksheet (1.2, 3a). Leave blank for Note numbers.
-                </p>
-              </div>
-              <a className="skip-link" href="#work-list" onClick={skipToWorkList}>
-                Skip to Your work
-              </a>
             </div>
           ) : (
             <p className="hint" aria-hidden="true">Press Alt+Equals to start an equation.</p>
           )}
         </section>
 
-        <section className="doc-pane" aria-labelledby="doc-heading">
+        <section className="doc-pane">
           <h2 id="doc-heading">Your work</h2>
-          <details className="kbd-help organize-pages">
-            <summary>Organize pages</summary>
-            <SheetManagement
-              library={library}
-              onNewClass={() => openClassDialog('create')}
-              onRenameClass={() => openClassDialog('rename')}
-              onDuplicateSheet={onDuplicateSheet}
-              onDeleteSheet={onDeleteSheet}
-              onDeleteClass={onDeleteClass}
-            />
-          </details>
+          {!STUDENT_SIMPLE_UI && (
+            <details className="kbd-help organize-pages">
+              <summary>Organize pages</summary>
+              <SheetManagement
+                library={library}
+                onNewClass={() => openClassDialog('create')}
+                onRenameClass={() => openClassDialog('rename')}
+                onDuplicateSheet={onDuplicateSheet}
+                onDeleteSheet={onDeleteSheet}
+                onDeleteClass={onDeleteClass}
+              />
+            </details>
+          )}
           <p className="hint" aria-hidden="true">
             Your work is the worksheet in order. Arrows browse. Enter edits.
           </p>
-          <ul
+          <div
             ref={listRef}
             id="work-list"
             className="block-list"
-            role="listbox"
-            tabIndex={0}
-            aria-label="Worksheet answers"
-            aria-activedescendant={activeId}
-            onKeyDown={onListKeyDown}
+            role="application"
+            aria-label="Your work"
           >
             {sheet.blocks.map((block) => {
               const selected = block.id === activeId;
               const label = blockListName(sheet.blocks, block.id);
               if (block.type === 'prose') {
                 const preview = block.text.trim() || 'empty';
+                const optionName = `${label}, ${preview}`;
                 return (
-                  <li
+                  <button
+                    type="button"
                     key={block.id}
                     id={block.id}
-                    role="option"
                     data-block-id={block.id}
                     className={`block-select${selected ? ' selected' : ''}`}
-                    aria-selected={selected}
-                    aria-label={`${label} ${preview}`}
+                    tabIndex={selected ? 0 : -1}
+                    data-selected={selected ? 'true' : undefined}
+                    aria-label={optionName}
+                    onKeyDown={onListKeyDown}
                     onClick={() => editBlock(block.id)}
                   >
-                    {label}
+                    <span aria-hidden="true">{label}</span>
                     <span className="block-preview" aria-hidden="true">
                       {block.text.trim() ? block.text : '(empty)'}
                     </span>
-                  </li>
+                  </button>
                 );
               }
 
@@ -1622,18 +1669,21 @@ export default function App({
                 : parseError
                   ? `invalid. ${parseError}`
                   : toNaturalSpeech(block.latex);
+              const optionName = `${label}, ${spoken}`;
               return (
-                <li
+                <button
+                  type="button"
                   key={block.id}
                   id={block.id}
-                  role="option"
                   data-block-id={block.id}
                   className={`block-select${selected ? ' selected' : ''}`}
-                  aria-selected={selected}
-                  aria-label={`${label} ${spoken}`}
+                  tabIndex={selected ? 0 : -1}
+                  data-selected={selected ? 'true' : undefined}
+                  aria-label={optionName}
+                  onKeyDown={onListKeyDown}
                   onClick={() => editBlock(block.id)}
                 >
-                  {label}
+                  <span aria-hidden="true">{label}</span>
                   {block.latex.trim() ? (
                     <span className="block-preview" aria-hidden="true">
                       {block.latex}
@@ -1648,133 +1698,146 @@ export default function App({
                       invalid
                     </span>
                   )}
-                </li>
+                </button>
               );
             })}
-          </ul>
+          </div>
 
-          <div className="toolbar" role="group" aria-label="Add or change work">
-            <button type="button" onClick={() => addEquationOrFocus()}>
+          <div className="toolbar">
+            <button
+              ref={newEquationButtonRef}
+              type="button"
+              onClick={() => addEquationOrFocus()}
+            >
               New equation <span className="kbd" aria-hidden="true">Alt+=</span>
             </button>
             <button type="button" onClick={addNote}>
               New note <span className="kbd" aria-hidden="true">Alt+N</span>
             </button>
+            {!STUDENT_SIMPLE_UI && (
+              <button
+                type="button"
+                onClick={duplicateActive}
+                aria-label={
+                  active
+                    ? `Duplicate ${blockListName(sheet.blocks, active.id)}`
+                    : 'Duplicate selected item'
+                }
+              >
+                Duplicate
+              </button>
+            )}
             <button
               type="button"
-              onClick={duplicateActive}
-              aria-label={
-                active
-                  ? `Duplicate ${blockListName(sheet.blocks, active.id)}`
-                  : 'Duplicate selected item'
-              }
-            >
-              Duplicate
-            </button>
-            <button
-              type="button"
-              onClick={removeActive}
-              aria-label={
-                active
-                  ? `Remove ${blockListName(sheet.blocks, active.id)}`
-                  : 'Remove selected item'
-              }
+              onClick={() => removeActive(false, true)}
+              aria-label="Remove current item"
             >
               Remove <span className="kbd" aria-hidden="true">Delete</span>
             </button>
           </div>
-          <div className="toolbar" role="group" aria-label="Page actions">
+          <div className="toolbar">
             <button type="button" onClick={() => persist()}>
               Save draft <span className="kbd" aria-hidden="true">Ctrl+S</span>
             </button>
             <button
               type="button"
               onClick={undo}
-              disabled={!undoStack.length}
-              aria-label={
-                undoStack.length
-                  ? peekUndo(undoStack)?.message
-                    ? `Undo: ${peekUndo(undoStack)?.message}`
-                    : 'Undo'
-                  : 'Undo unavailable'
-              }
+              aria-label="Undo"
             >
               Undo <span className="kbd" aria-hidden="true">Ctrl+Shift+Z</span>
             </button>
-            <button type="button" onClick={clearCurrentSheet}>
-              Clear {workType}
-            </button>
+            {!STUDENT_SIMPLE_UI && (
+              <button type="button" onClick={clearCurrentSheet}>
+                Clear {workType}
+              </button>
+            )}
           </div>
 
-          <div className="toolbar" role="group" aria-label="Review">
+          <div className="toolbar">
             <button
               ref={reviewButtonRef}
               type="button"
               onClick={openReview}
-              aria-expanded={reviewOpen}
-              aria-controls="review-panel"
+              aria-haspopup="dialog"
             >
               Review answers <span className="kbd" aria-hidden="true">Alt+R</span>
             </button>
+            <button type="button" onClick={downloadWord}>
+              Download Word
+            </button>
           </div>
 
-          <details className="kbd-help export-tools">
-            <summary>{isPractice ? 'Export and backup' : 'Download copies'}</summary>
-            <p className="hint" aria-hidden="true">
-              Save draft keeps your work here. These buttons make a downloadable copy.
-            </p>
-            <div
-              className="toolbar"
-              role="group"
-              aria-label={isPractice ? 'Export and backup' : 'Download copies'}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  void handlersRef.current.copyAll();
-                }}
+          {!STUDENT_SIMPLE_UI && (
+            <details className="kbd-help export-tools">
+              <summary>{isPractice ? 'Export and backup' : 'Download copies'}</summary>
+              <p className="hint" aria-hidden="true">
+                Save draft keeps your work here. These buttons make a downloadable copy.
+              </p>
+              <div
+                className="toolbar"
+                role="group"
+                aria-label={isPractice ? 'Export and backup' : 'Download copies'}
               >
-                Copy all answers <span className="kbd" aria-hidden="true">Ctrl+Shift+C</span>
-              </button>
-              <button type="button" onClick={exportPrint}>
-                Print / visual PDF
-              </button>
-              <button type="button" onClick={downloadWord}>
-                Download Word
-              </button>
-              <button type="button" onClick={downloadJson}>
-                Download backup
-              </button>
-              <button type="button" onClick={downloadAccessibleHtml}>
-                Download accessible HTML
-              </button>
-              <button
-                ref={uploadButtonRef}
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Upload backup
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                tabIndex={-1}
-                accept="application/json,.json,.digimath.json"
-                className="file-input"
-                aria-label="Upload digimath JSON backup"
-                onChange={(e) => {
-                  onImportFile(e.target.files?.[0] || null);
-                  e.target.value = '';
-                  requestAnimationFrame(() => uploadButtonRef.current?.focus());
-                }}
-              />
-            </div>
-          </details>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handlersRef.current.copyAll();
+                  }}
+                >
+                  Copy all answers <span className="kbd" aria-hidden="true">Ctrl+Shift+C</span>
+                </button>
+                <button type="button" onClick={exportPrint}>
+                  Print / visual PDF
+                </button>
+                <button type="button" onClick={downloadWord}>
+                  Download Word
+                </button>
+                <button type="button" onClick={downloadJson}>
+                  Download backup
+                </button>
+                <button type="button" onClick={downloadAccessibleHtml}>
+                  Download accessible HTML
+                </button>
+                <button
+                  ref={uploadButtonRef}
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Upload backup
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  tabIndex={-1}
+                  accept="application/json,.json,.digimath.json"
+                  className="file-input"
+                  aria-label="Upload digimath JSON backup"
+                  onChange={(e) => {
+                    onImportFile(e.target.files?.[0] || null);
+                    e.target.value = '';
+                    requestAnimationFrame(() => uploadButtonRef.current?.focus());
+                  }}
+                />
+              </div>
+            </details>
+          )}
         </section>
+
+        <ReviewPanel
+          sheet={sheet}
+          activeId={activeId}
+          open={reviewOpen}
+          onClose={closeReview}
+          onJump={(id) => {
+            editBlock(id);
+            setReviewOpen(false);
+          }}
+          onHighlight={setActiveId}
+        />
       </main>
 
       <footer className="foot">
-        <p>Accessible Linear practice for NVDA, JAWS, and VoiceOver.</p>
+        <p>Accessible Linear practice, designed for NVDA, JAWS, and VoiceOver.</p>
       </footer>
 
       <div className="print-only">

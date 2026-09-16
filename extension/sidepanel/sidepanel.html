@@ -3,29 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LaTeX Equation Editor</title>
+  <title>LaTeX</title>
   <link rel="stylesheet" href="../lib/katex/katex.min.css">
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <header class="panel-header">
+  <div class="panel-header">
     <div class="panel-header-row">
-      <h1 id="panel-title">LaTeX Equation Editor</h1>
-      <button type="button" id="btn-close-panel" class="btn-close" aria-label="Close equation editor">
+      <h1 id="panel-title" aria-hidden="true">LaTeX Equation Editor</h1>
+      <button type="button" id="btn-close-panel" class="btn-close" aria-hidden="true" tabindex="-1" aria-label="Close equation editor">
         Close
       </button>
     </div>
-    <p class="subtitle" id="panel-subtitle">Linear mode — type LaTeX, hear keystrokes, then insert into your document</p>
-  </header>
+    <p class="subtitle" id="panel-subtitle" aria-hidden="true">Linear mode — type LaTeX, then insert into your document</p>
+  </div>
 
-  <div id="speech-output" class="speech-output" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1"></div>
+  <!-- Visible copy of the last announcement. Hidden from screen readers
+       because #sr-status below already speaks it and #status keeps a
+       browsable copy. -->
+  <div id="speech-output" class="speech-output" aria-hidden="true"></div>
 
-  <div id="sr-keystroke" class="sr-live" aria-live="polite" aria-atomic="true"></div>
-  <div id="sr-preview" class="sr-live" aria-live="polite" aria-atomic="true"></div>
+  <!-- The one and only live region in this panel. Adding more makes every
+       message get read once per region. -->
   <div id="sr-status" class="sr-live" aria-live="assertive" aria-atomic="true"></div>
 
-  <main id="main-content">
-    <section class="editor-section" aria-labelledby="latex-label">
+  <div id="main-content">
+    <div class="editor-section">
       <label id="latex-label" for="latex-input">Linear LaTeX</label>
       <textarea
         id="latex-input"
@@ -34,13 +37,13 @@
         autocomplete="off"
         autocorrect="off"
         autocapitalize="off"
-        aria-describedby="latex-hint"
-        aria-keyshortcuts="Alt+Enter Insert equation"
         placeholder="y=\sqrt{x + 3}"
       ></textarea>
-      <p id="latex-hint" class="hint">
-        <strong>Keyboard workflow:</strong> click once in your Google Doc where the equation should go,
+      <p id="latex-hint" class="hint" aria-hidden="true">
+        <strong>Keyboard workflow:</strong> put the cursor in your Google Doc where the equation should go,
         then press <kbd>Alt</kbd>+<kbd>Enter</kbd> or activate <strong>Insert at cursor</strong>.
+        <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> starts a new line below the cursor and puts the
+        equation there, which is how you add one between two existing lines.
         <kbd>Enter</kbd> alone adds a new line in the LaTeX box.
         <kbd>Alt</kbd>+<kbd>D</kbd> returns to the document (panel stays open).
         In the document, <kbd>Up</kbd> and <kbd>Down</kbd> move the cursor line by line
@@ -50,25 +53,20 @@
         <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> re-reads the current equation.
         <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Delete</kbd> removes the selected equation.
       </p>
-    </section>
+    </div>
 
-    <section class="preview-section" aria-labelledby="preview-label">
+    <div class="preview-section">
       <div class="preview-header">
         <h2 id="preview-label">Professional preview</h2>
         <button type="button" id="btn-read" class="btn-text" aria-label="Read equation aloud">
           Read aloud
         </button>
       </div>
-      <div
-        id="preview"
-        class="preview"
-        role="img"
-        aria-label="Equation preview"
-      >
+      <div id="preview" class="preview">
         <span class="preview-placeholder">Preview appears here</span>
       </div>
-      <p id="preview-speech" class="speech-text" tabindex="-1"></p>
-    </section>
+      <p id="preview-speech" class="speech-text" aria-hidden="true"></p>
+    </div>
 
     <div class="actions" role="group" aria-label="Equation actions">
       <button type="button" id="btn-insert" class="btn-primary">
@@ -79,30 +77,25 @@
       <button type="button" id="btn-refresh" class="btn-secondary">Refresh list</button>
     </div>
 
-    <p id="status" class="status" role="status"></p>
+    <p id="status" class="status"></p>
 
-    <section class="equations-section" aria-labelledby="equations-label">
+    <div class="equations-section">
       <h2 id="equations-label">Equations in document</h2>
       <p class="hint">Select an equation to load it for editing. Or press F2 in the document with the cursor near an equation.</p>
       <ul id="equation-list" class="equation-list" role="listbox" aria-label="Equations in document">
         <li class="equation-empty">Open a Google Doc to see equations.</li>
       </ul>
-    </section>
+    </div>
 
-    <section class="templates-section" aria-labelledby="templates-label">
-      <h2 id="templates-label">DigiMath templates</h2>
+    <div class="templates-section">
+      <h2 id="templates-label">Practice templates</h2>
       <div id="template-list" class="template-list"></div>
-    </section>
-  </main>
-
-  <footer class="panel-footer">
-    <a href="https://accessuci.ics.uci.edu/digimath/" target="_blank" rel="noopener noreferrer">
-      Access Digi Math
-    </a>
-  </footer>
+    </div>
+  </div>
 
   <script src="../lib/katex/katex.min.js"></script>
   <script src="../lib/latex-speech.js"></script>
+  <script src="../lib/latex-mathml.js"></script>
   <script src="../lib/speech-output.js"></script>
   <script src="sidepanel.js"></script>
 </body>

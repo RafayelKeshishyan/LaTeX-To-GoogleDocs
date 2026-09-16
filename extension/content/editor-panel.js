@@ -14,8 +14,7 @@ const EditorPanel = (() => {
 
     host = document.createElement('div');
     host.id = HOST_ID;
-    host.setAttribute('role', 'complementary');
-    host.setAttribute('aria-label', 'LaTeX equation editor');
+    host.setAttribute('data-latex-gdocs-panel', '1');
     host.hidden = true;
     host.style.cssText =
       'position:fixed;top:0;right:0;width:400px;max-width:96vw;height:100vh;z-index:2147483647;' +
@@ -53,12 +52,13 @@ const EditorPanel = (() => {
     closeBtn.addEventListener('mousedown', handleClose, true);
     closeBtn.addEventListener('click', handleClose, true);
 
+    header.setAttribute('aria-hidden', 'true');
     header.appendChild(title);
     header.appendChild(closeBtn);
 
     const frame = document.createElement('iframe');
     frame.id = FRAME_ID;
-    frame.title = 'LaTeX equation editor';
+    frame.title = 'LaTeX';
     frame.src = chrome.runtime.getURL('sidepanel/sidepanel.html');
     frame.style.cssText =
       'flex:1;width:100%;border:none;min-height:0;position:relative;z-index:1;pointer-events:auto;';
@@ -105,15 +105,12 @@ const EditorPanel = (() => {
       return false;
     }
 
-    const reopening = isVisible();
     const panelState = {
       mode: state.mode || 'new',
       latex: state.mode === 'edit' ? state.latex || '' : '',
       clearLatex: state.mode === 'new' || state.clearLatex === true,
       focusEditor: state.focusEditor !== false,
-      announce:
-        state.announce ||
-        (reopening ? 'Linear mode.' : 'LaTeX equation editor. Linear mode.')
+      announce: state.announce || ''
     };
 
     pendingPanelState = panelState;
@@ -123,6 +120,7 @@ const EditorPanel = (() => {
     host.style.display = 'flex';
     host.setAttribute('aria-hidden', 'false');
     pushStateToFrame(panelState);
+    setTimeout(() => focusInput(), 80);
 
     return true;
   }
@@ -133,7 +131,6 @@ const EditorPanel = (() => {
     host.hidden = true;
     host.style.display = 'none';
     host.setAttribute('aria-hidden', 'true');
-    DocumentBridge.announce('Equation editor closed.', { priority: 'assertive' });
     DocsUtils.focusEditor();
   }
 
@@ -142,7 +139,23 @@ const EditorPanel = (() => {
     return Boolean(host && !host.hidden);
   }
 
-  return { show, hide, isVisible };
+  function focusInput() {
+    const frame = document.getElementById(FRAME_ID);
+    if (!frame || !isVisible()) return false;
+    try {
+      const input = frame.contentDocument?.getElementById('latex-input');
+      if (input) {
+        input.focus();
+        return true;
+      }
+      frame.contentWindow?.postMessage({ type: 'LATEX_GDOCS_FOCUS_INPUT' }, '*');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return { show, hide, isVisible, focusInput };
 })();
 
 if (typeof window !== 'undefined') {

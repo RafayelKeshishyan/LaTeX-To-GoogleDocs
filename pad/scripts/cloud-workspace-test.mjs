@@ -275,7 +275,7 @@ function title(page) {
   if (await retry.isVisible()) ok('the account failure offers a retry');
   else fail('no retry control was offered after a failed load');
 
-  await page.locator('.linear-editor textarea').fill('c=\\sqrt{a^2+b^2}');
+  await page.locator('.linear-editor .linear-input').fill('c=\\sqrt{a^2+b^2}');
   await page.locator('.title-field input').fill('Work typed while offline');
   await page.waitForFunction(
     (key) =>

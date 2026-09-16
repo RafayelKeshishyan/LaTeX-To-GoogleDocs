@@ -1,6 +1,6 @@
 # Tutorial 1 — Exponents
 
-**DigiMath Tutorial 1** | [Access Digi Math](https://accessuci.ics.uci.edu/digimath/)
+**Tutorial 1 — Exponents**
 
 ## Learning objective
 
@@ -55,7 +55,7 @@ Type exponents in LaTeX using the `^` character.
 
 - Teach `^` as "caret" or "hat" — students hear it on each keystroke in Linear mode.
 - Curly braces for multi-digit exponents: `2^{10}` not `2^10` (which means `2^1` followed by `0`).
-- Compare with DigiMath online practice before moving to Google Docs.
+- Practice the same equations in the Math Pad before moving to Google Docs.
 
 ## Shortcut reminder
 

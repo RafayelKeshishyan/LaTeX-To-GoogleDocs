@@ -88,10 +88,17 @@ const EquationNavigator = (() => {
   function announceEquationEntry(eq, prefix) {
     if (!eq?.latex?.trim()) return;
     const speech = LatexSpeech.toNaturalSpeech(eq.latex);
+    const n = eq.equationNumber;
+    const total = eq.total;
     const position =
-      eq.total > 1 ? `Equation ${eq.equationNumber} of ${eq.total}. ` : 'Equation. ';
-    const message = (prefix || position) + speech;
-    DocumentBridge.announce(message, { priority: 'assertive' });
+      prefix ||
+      (total > 1 && n ? `${n} of ${total}. ` : '');
+    DocumentBridge.announce(position, {
+      priority: 'assertive',
+      interrupt: true,
+      latex: eq.latex,
+      speech: position + speech
+    });
     lastAnnouncedLatex = eq.latex;
   }
 
@@ -182,13 +189,8 @@ const EquationNavigator = (() => {
   function announceAfterCaretMove() {
     if (!enabled || isAnnounceSuppressed()) return;
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(async () => {
+    debounceTimer = setTimeout(() => {
       DocsUtils.captureCursorPointer();
-      DocsUtils.resetKnownCaretLine();
-
-      if (DocsUtils.isCanvasMode()) {
-        await DocsUtils.ensureLineMetrics();
-      }
 
       const all = getEquationList();
       if (!all.length) {
@@ -206,9 +208,8 @@ const EquationNavigator = (() => {
         (item) => item === eq || latexMatches(item.latex, eq.latex)
       );
       if (idx >= 0) navIndex = idx;
-      // Prefer the ordered entry so "Equation 2 of 4" is correct.
-      announceEquationEntry(idx >= 0 ? all[idx] : eq, '');
-    }, 220);
+      announceEquationEntry(idx >= 0 ? all[idx] : eq);
+    }, 40);
   }
 
   function scheduleAnnounce(force) {
@@ -232,21 +233,31 @@ const EquationNavigator = (() => {
     composingNew = false;
 
     const speech = LatexSpeech.toNaturalSpeech(trimmed);
-    DocumentBridge.announce((options.prefix || '') + speech, { priority: 'assertive' });
     lastAnnouncedLatex = trimmed;
 
-    setTimeout(() => {
-      const all = getEquationList();
-      let idx = -1;
-      for (let i = all.length - 1; i >= 0; i--) {
-        if (latexMatches(all[i].latex, trimmed)) {
-          idx = i;
-          break;
-        }
+    const all = getEquationList();
+    let idx = -1;
+    for (let i = all.length - 1; i >= 0; i--) {
+      if (latexMatches(all[i].latex, trimmed)) {
+        idx = i;
+        break;
       }
-      if (idx < 0 && all.length) idx = all.length - 1;
-      if (idx >= 0) navIndex = idx;
-    }, 300);
+    }
+    if (idx < 0 && all.length) idx = all.length - 1;
+    if (idx >= 0) navIndex = idx;
+
+    if (!options.skipAnnounce) {
+      const total = all.length;
+      const n = idx >= 0 ? idx + 1 : 0;
+      const position =
+        options.prefix || (total > 1 && n ? `${n} of ${total}. ` : '');
+      DocumentBridge.announce(position, {
+        priority: 'assertive',
+        interrupt: true,
+        latex: trimmed,
+        speech: position + speech
+      });
+    }
   }
 
   function onNavigationKey(e) {
@@ -313,7 +324,11 @@ const EquationNavigator = (() => {
       await focusCursorOnEquation(remaining[navIndex]);
     }
 
-    DocumentBridge.announce(`Deleted ${label}. ${speech}`, { priority: 'assertive' });
+    DocumentBridge.announce(`Deleted ${label}. `, {
+      priority: 'assertive',
+      latex: eq.latex,
+      speech: `Deleted ${label}. ${speech}`
+    });
     return result;
   }
 

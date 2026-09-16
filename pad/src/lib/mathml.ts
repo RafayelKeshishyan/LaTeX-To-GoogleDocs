@@ -54,6 +54,31 @@ export function renderKatexHtml(latex: string): { html: string; error: string | 
   }
 }
 
+/**
+ * Turn clipboard text into Linear source. Accepts plain LaTeX, or MathML that
+ * carries an application/x-tex annotation (what Copy MathML produces).
+ */
+export function latexFromClipboardText(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return '';
+
+  const texAnnotation =
+    /<annotation\b[^>]*\bencoding\s*=\s*["']application\/x-tex["'][^>]*>([\s\S]*?)<\/annotation>/i.exec(
+      trimmed,
+    );
+  if (texAnnotation) {
+    return texAnnotation[1]
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .trim();
+  }
+
+  if (/^<math[\s>]/i.test(trimmed)) return '';
+  return trimmed;
+}
+
 /** Strict check for Alt+Enter / hand-in — does not drive live preview speech. */
 export function latexParseError(latex: string): string | null {
   const src = latex.trim();

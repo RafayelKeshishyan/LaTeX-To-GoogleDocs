@@ -2,7 +2,7 @@
 
 This document records the **gold-standard workflow** already working in schools with Microsoft Word, JAWS, and braille displays. Our Google Docs tool must replicate this experience.
 
-Based on the [Writing LaTeX in Word Tutorial](../Writing%20LaTeX%20in%20Word%20Tutorial.docx) and the Perkins-UCI Access Digi Math webinar.
+Based on the [Writing LaTeX in Word Tutorial](../Writing%20LaTeX%20in%20Word%20Tutorial.docx).
 
 ---
 
@@ -10,7 +10,7 @@ Based on the [Writing LaTeX in Word Tutorial](../Writing%20LaTeX%20in%20Word%20T
 
 **Tina** (blind high school student, Perkins-UCI webinar): teachers give assignments in accessible Word; Tina reads, writes, and submits math independently using Word + JAWS + braille display.
 
-The same pedagogy is taught on [Access Digi Math](https://accessuci.ics.uci.edu/digimath/) before students encounter Word in the classroom.
+The project uses the same Linear-to-Professional progression before students encounter Word in the classroom.
 
 ---
 
@@ -65,7 +65,7 @@ The same pedagogy is taught on [Access Digi Math](https://accessuci.ics.uci.edu/
 
 ---
 
-## Example lesson flow (DigiMath Tutorial 3)
+## Example lesson flow (square-root tutorial)
 
 1. `Alt+=`
 2. Type: `y=\sqrt{x+3}`
@@ -103,7 +103,7 @@ Full test script: [acceptance-test.md](acceptance-test.md)
 
 ## Classroom notes for TVIs
 
-- Teach Word workflow first on DigiMath, then transfer to Google Docs in Chrome (Windows or Mac).
+- Teach the Linear-to-Professional workflow first, then transfer it to Google Docs in Chrome (Windows or Mac).
 - Emphasize **F2** replaces **Ctrl+Shift+=** in Google Docs.
 - Use **Ctrl+Shift+L** to show LaTeX source when demonstrating to sighted classmates.
 - Blind students' ChromeVox experience is unchanged whether source is shown or hidden.

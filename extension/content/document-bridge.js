@@ -15,95 +15,35 @@ const DocumentBridge = (() => {
 
 
   function initAnnounce() {
+    if (typeof SpeechOutput === 'undefined') return;
 
     if (!ariaLiveRegion) {
-
-      ariaLiveRegion = document.createElement('div');
-
-      ariaLiveRegion.id = 'latex-gdocs-aria-live';
-
-      ariaLiveRegion.setAttribute('role', 'status');
-
-      ariaLiveRegion.setAttribute('aria-live', 'polite');
-
-      ariaLiveRegion.setAttribute('aria-atomic', 'true');
-
-      ariaLiveRegion.className = 'latex-gdocs-sr-only';
-
-      ariaLiveRegion.style.cssText =
-
-        'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
-
-      document.body.appendChild(ariaLiveRegion);
-
+      ariaLiveRegion = SpeechOutput.createLiveRegion(
+        document,
+        'latex-gdocs-aria-live',
+        'polite'
+      );
     }
-
-
 
     if (!ariaLiveAssertive) {
-
-      ariaLiveAssertive = document.createElement('div');
-
-      ariaLiveAssertive.id = 'latex-gdocs-aria-live-assertive';
-
-      ariaLiveAssertive.setAttribute('role', 'alert');
-
-      ariaLiveAssertive.setAttribute('aria-live', 'assertive');
-
-      ariaLiveAssertive.setAttribute('aria-atomic', 'true');
-
-      ariaLiveAssertive.className = 'latex-gdocs-sr-only';
-
-      ariaLiveAssertive.style.cssText = ariaLiveRegion.style.cssText;
-
-      document.body.appendChild(ariaLiveAssertive);
-
+      ariaLiveAssertive = SpeechOutput.createLiveRegion(
+        document,
+        'latex-gdocs-aria-live-assertive',
+        'assertive'
+      );
     }
-
   }
-
-
-
-  function speakLive(el, text) {
-
-    el.textContent = '';
-
-    requestAnimationFrame(() => {
-
-      el.textContent = text;
-
-      setTimeout(() => {
-
-        el.textContent = '';
-
-        requestAnimationFrame(() => {
-
-          el.textContent = text;
-
-        });
-
-      }, 80);
-
-    });
-
-  }
-
-
 
   function announce(text, options = {}) {
-
+    if (typeof SpeechOutput === 'undefined') return;
     initAnnounce();
-
-    const el = options.priority === 'assertive' ? ariaLiveAssertive : ariaLiveRegion;
-
-    speakLive(el, text);
-
-    if (typeof SpeechOutput !== 'undefined') {
-
-      SpeechOutput.speak(text);
-
-    }
-
+    const pageEl = options.priority === 'assertive' ? ariaLiveAssertive : ariaLiveRegion;
+    SpeechOutput.announceInRegion(pageEl, text, {
+      interrupt: options.interrupt === true,
+      latex: options.latex,
+      fallback: options.speech
+    });
+    SpeechOutput.speak(options.speech || text);
   }
 
 
@@ -187,10 +127,24 @@ const DocumentBridge = (() => {
 
 
 
-  async function prepareNextLineAfterInsert() {
+  /**
+   * Leave the writer on a fresh line ready for the next equation, but only
+   * when the insert landed at the end of the document. In the middle of a
+   * document the next line break already exists, so adding one would strand a
+   * blank line — the case you hit after deleting an equation and retyping it.
+   *
+   * The caret stays in the document. Do not move focus back to Linear LaTeX.
+   */
+  async function prepareNextLineAfterInsert(insertedText, textBefore) {
     await sleep(100);
-    DocsUtils.focusEditor();
-    await DocsUtils.insertText('\n', { cursorLeft: 0 });
+
+    const textAfter = DocsUtils.readHiddenModelText();
+    if (!DocsUtils.insertLandedAtDocumentEnd(textBefore, textAfter, insertedText)) {
+      DocsUtils.updateInsertPointerFromCursor();
+      return;
+    }
+
+    await DocsUtils.insertText('\n', { cursorLeft: 0, skipFocus: true });
     await sleep(80);
     DocsUtils.updateInsertPointerFromCursor();
   }
@@ -228,6 +182,10 @@ const DocumentBridge = (() => {
 
     await prepareDocumentForInsert({ fast: options.fastReturn === true });
 
+    if (options.newLine) {
+      await DocsUtils.openLineBelow();
+    }
+
 
 
     const zoneCountBefore = options.fastReturn
@@ -255,7 +213,11 @@ const DocumentBridge = (() => {
         insertedAs = 'image';
 
         if (!options.skipAnnounce) {
-          announce('Equation inserted. ' + speech, { priority: 'assertive' });
+          announce('Equation inserted. ', {
+            priority: 'assertive',
+            latex: trimmed,
+            speech: 'Equation inserted. ' + speech
+          });
         }
 
         if (typeof EquationNavigator !== 'undefined') {
@@ -270,37 +232,38 @@ const DocumentBridge = (() => {
 
 
 
-    const textOk = await DocsUtils.insertText(DocsUtils.zoneText(insertText), { cursorLeft: 0 });
+    const zoneText = DocsUtils.zoneText(insertText);
+    const textBefore = DocsUtils.readHiddenModelText();
+
+    const textOk = await DocsUtils.insertText(zoneText, { cursorLeft: 0 });
 
 
 
     if (!textOk) {
-
       return {
-
         ok: false,
-
         error:
-
           'Could not insert. Click once in the document where you want the equation, then press Alt Enter again.',
-
         speech
-
       };
-
     }
 
 
 
     if (options.fastReturn) {
 
-      DocsUtils.focusEditor();
+      if (typeof EquationNavigator !== 'undefined') {
+        EquationNavigator.onInserted(trimmed, { skipAnnounce: true });
+      }
 
+      await prepareNextLineAfterInsert(zoneText, textBefore);
+
+      // Wait until NVDA finishes "document content, edit, blank". If we
+      // speak during that focus change, NVDA drops the math entirely.
+      await sleep(500);
       if (typeof EquationNavigator !== 'undefined') {
         EquationNavigator.onInserted(trimmed);
       }
-
-      prepareNextLineAfterInsert().catch(() => {});
 
       return {
 
@@ -338,19 +301,20 @@ const DocumentBridge = (() => {
 
 
 
-    DocsUtils.focusEditor();
-
-
-
-    if (!options.skipAnnounce) {
-      announce('Equation inserted. ' + speech, { priority: 'assertive' });
-    }
-
     if (typeof EquationNavigator !== 'undefined') {
-      EquationNavigator.onInserted(trimmed);
+      EquationNavigator.onInserted(trimmed, {
+        skipAnnounce: options.skipAnnounce === true
+      });
+    } else if (!options.skipAnnounce) {
+      announce('', {
+        priority: 'assertive',
+        interrupt: true,
+        latex: trimmed,
+        speech
+      });
     }
 
-    prepareNextLineAfterInsert().catch(() => {});
+    await prepareNextLineAfterInsert(zoneText, textBefore);
 
 
 

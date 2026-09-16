@@ -6,8 +6,7 @@ Sidebar add-on for inserting LaTeX equation zones (`⟦eq⟧...⟦/eq⟧`) into 
 
 - LaTeX editor with live KaTeX preview
 - Insert equation delimiters at cursor
-- DigiMath worksheet templates (Tutorials 1–4)
-- Link to [Access Digi Math](https://accessuci.ics.uci.edu/digimath/)
+- Introductory LaTeX worksheet templates
 
 ## Prerequisites
 

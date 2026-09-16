@@ -1,6 +1,6 @@
 # TVI Guide — Teaching LaTeX in Google Docs
 
-Guide for Teachers of the Visually Impaired (TVIs) transitioning students from Word + DigiMath to Google Docs in **Chrome on Windows or Mac**.
+Guide for Teachers of the Visually Impaired (TVIs) transitioning students from Word-style Linear LaTeX to Google Docs in **Chrome on Windows or Mac**.
 
 ---
 
@@ -24,9 +24,9 @@ F2 is universal (Excel cell edit, file rename) and does not conflict with browse
 
 ## Recommended lesson sequence
 
-### Phase 1 — DigiMath (online)
+### Phase 1 — Linear LaTeX practice
 
-Students learn LaTeX syntax on [Access Digi Math](https://accessuci.ics.uci.edu/digimath/) Tutorials 1–4:
+Students learn LaTeX syntax with the introductory practice worksheets:
 
 1. Exponents: `x^2`
 2. Fractions: `\frac{a}{b}`
@@ -47,7 +47,7 @@ Same flow with one shortcut change:
 - `Alt+=` → Linear → type → **Alt+Enter** to insert
 - **`F2`** to edit (instead of `Ctrl+Shift+=`)
 
-Use worksheets in [worksheets/](worksheets/) — same LaTeX examples as DigiMath.
+Use the LaTeX practice worksheets in [worksheets/](worksheets/).
 
 ---
 
@@ -62,7 +62,7 @@ Press **`Ctrl+Shift+L`** in Professional mode to reveal LaTeX source below the r
 
 **When to use:**
 
-- Demonstrating connection between LaTeX code and display math (DigiMath slide 17 pedagogy).
+- Demonstrating the connection between LaTeX code and display math.
 - Peer tutoring: sighted classmate sees both forms.
 - Assessment: verify student wrote correct LaTeX.
 
@@ -122,7 +122,7 @@ If IT blocks Chrome extensions, deploy the Apps Script add-on (see [addon/README
 
 ## Worksheet templates
 
-Pre-filled examples matching DigiMath tutorials:
+Pre-filled examples matching the practice tutorials:
 
 | Worksheet | Topic | Example LaTeX |
 |---|---|---|
@@ -147,7 +147,7 @@ Pre-filled examples matching DigiMath tutorials:
 
 ## Curriculum alignment checklist
 
-- [ ] Student completed DigiMath Tutorials 1–4
+- [ ] Student completed the introductory tutorials
 - [ ] Student practiced Word workflow (if available)
 - [ ] Student knows **F2** replaces `Ctrl+Shift+=` in Google Docs
 - [ ] TVI demonstrated **Ctrl+Shift+L** teaching toggle

@@ -2,14 +2,6 @@
  * service-worker.js — Background service worker (Manifest V3)
  */
 
-const DEFAULT_SHORTCUTS = {
-  insert: 'Alt+=',
-  commit: 'Alt+Enter',
-  editLinear: 'F2',
-  toggleSource: 'Ctrl+Shift+L',
-  fallbackInsert: 'Ctrl+Alt+M'
-};
-
 async function openEditorInTab(tabId, state = {}) {
   await chrome.storage.session.set({
     panelState: {
@@ -28,14 +20,14 @@ async function openEditorInTab(tabId, state = {}) {
   });
 }
 
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    chrome.storage.sync.set({
-      shortcuts: DEFAULT_SHORTCUTS,
-      announceKeystrokes: true,
-      equationNavAnnounce: true
-    });
-  }
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.sync.get(['speechMode', 'announceKeystrokes', 'equationNavAnnounce'], (data) => {
+    const next = {};
+    if (!data.speechMode) next.speechMode = 'screenReader';
+    if (data.announceKeystrokes === undefined) next.announceKeystrokes = true;
+    if (data.equationNavAnnounce === undefined) next.equationNavAnnounce = true;
+    if (Object.keys(next).length) chrome.storage.sync.set(next);
+  });
 });
 
 chrome.action.onClicked.addListener((tab) => {
@@ -71,8 +63,19 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.action === 'getDefaults') {
-    sendResponse({ shortcuts: DEFAULT_SHORTCUTS });
+  if (msg.action === 'speak') {
+    const text = (msg.text || '').trim();
+    if (!text) {
+      sendResponse({ ok: false });
+      return true;
+    }
+    try {
+      chrome.tts.stop();
+      chrome.tts.speak(text, { rate: msg.rate || 1, enqueue: false });
+      sendResponse({ ok: true });
+    } catch (err) {
+      sendResponse({ ok: false, error: String(err) });
+    }
     return true;
   }
 

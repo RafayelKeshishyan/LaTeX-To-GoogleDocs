@@ -896,7 +896,9 @@ const DocsUtils = (() => {
       return false;
     }
 
-    focusEditor();
+    if (options.skipFocus !== true) {
+      focusEditor();
+    }
 
     const mainOk = await insertViaMainWorld(text, cursorLeft);
     if (mainOk) return true;
@@ -1563,6 +1565,19 @@ const DocsUtils = (() => {
         : equations,
       canvasMode: isCanvasMode(),
       lineMetrics,
+      lineTable: lineTable
+        ? {
+            measuredLines: lineTable.ys.length,
+            modelLineCount: lineTable.modelLineCount,
+            // A mismatch means paragraphs wrap or blank lines were dropped,
+            // so visual-line indexes and model-line indexes are not the same.
+            matchesModel: lineTable.ys.length === lineTable.modelLineCount,
+            truncated: lineTable.truncated,
+            gaps: lineTable.ys
+              .slice(1, 40)
+              .map((y, i) => y - lineTable.ys[i])
+          }
+        : null,
       caretDocY: caretDocY(),
       caretLineCanvas: caretLineIndexCanvas(),
       modelLines: getModelLines().map((t, i) => `${i}: ${t.slice(0, 60)}`),
@@ -1666,8 +1681,82 @@ const DocsUtils = (() => {
   let lineMetrics = null;
   let calibrating = null;
 
+  /**
+   * Measured caret Y for every visual line, ascending. Built by walking the
+   * caret and recording where it actually lands, so headings, mixed font
+   * sizes, paragraph spacing and the gap between pages are accounted for by
+   * measurement instead of assumed away.
+   */
+  let lineTable = null;
+  let buildingTable = null;
+  let lastStaleCheck = 0;
+
+  const MAX_WALK_LINES = 2000;
+  // A walk costs one keystroke per line, so cap it by time as well as by
+  // count. Lines past the budget fall back to the averaged pitch.
+  const MAX_WALK_MS = 8000;
+
   function invalidateLineMetrics() {
     lineMetrics = null;
+    lineTable = null;
+  }
+
+  /** Cheap fingerprint so an edited or re-flowed document drops the table. */
+  function layoutSignature() {
+    const scroller = getScrollContainer();
+    return `${readHiddenModelText().length}:${scroller?.scrollHeight || 0}:${window.innerWidth}`;
+  }
+
+  function dropStaleLineTable() {
+    if (!lineTable) return;
+    const now = performance.now();
+    if (now - lastStaleCheck < 500) return;
+    lastStaleCheck = now;
+    if (lineTable.signature !== layoutSignature()) lineTable = null;
+  }
+
+  /**
+   * Resolve once the caret has settled somewhere other than previousY.
+   * Returns the unchanged value if it never moves, which is how the walk
+   * recognises the last line of the document.
+   */
+  function waitForCaretY(previousY, timeoutMs = 350) {
+    return new Promise((resolve) => {
+      let settled = false;
+      let candidate = null;
+      let repeats = 0;
+
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      };
+
+      // requestAnimationFrame stops in a background tab, so a timer has to
+      // guarantee the walk can never stall forever.
+      const timer = setTimeout(() => finish(caretDocY()), timeoutMs + 100);
+      const deadline = performance.now() + timeoutMs;
+
+      const tick = () => {
+        if (settled) return;
+        const y = caretDocY();
+        if (y != null && y !== previousY) {
+          if (y === candidate) {
+            repeats += 1;
+            // Two identical frames means the caret is not mid-scroll.
+            if (repeats >= 2) return finish(y);
+          } else {
+            candidate = y;
+            repeats = 1;
+          }
+        }
+        if (performance.now() >= deadline) return finish(caretDocY());
+        requestAnimationFrame(tick);
+      };
+
+      tick();
+    });
   }
 
   async function calibrateLineMetrics() {
@@ -1712,10 +1801,125 @@ const DocsUtils = (() => {
     return calibrating;
   }
 
+  /**
+   * Walk the caret down the document, recording where each visual line
+   * actually sits. One pass costs a few hundred keystrokes, so it only runs
+   * when arithmetic has already proved unreliable, and the result is cached
+   * until the document changes.
+   */
+  async function buildLineTable() {
+    await ExtensionContext.ensurePageMain();
+    focusEditor();
+    await sleep(120);
+
+    const scroller = getScrollContainer();
+    const restoreScroll = scroller?.scrollTop || 0;
+    const startY = caretDocY();
+
+    await moveCursor('documentStart', 0);
+    const first = await waitForCaretY(startY, 600);
+    if (first == null) return null;
+
+    const ys = [first];
+    let previous = first;
+    let reachedEnd = false;
+    const deadline = performance.now() + MAX_WALK_MS;
+
+    for (let i = 1; i < MAX_WALK_LINES; i++) {
+      await moveCursor('down', 1);
+      const y = await waitForCaretY(previous, 350);
+      if (y == null || y <= previous) {
+        reachedEnd = true;
+        break;
+      }
+      ys.push(y);
+      previous = y;
+      if (performance.now() > deadline) break;
+    }
+
+    lineTable = {
+      ys,
+      truncated: !reachedEnd,
+      modelLineCount: getModelLines().length,
+      signature: layoutSignature()
+    };
+
+    // A median of the measured gaps beats a single sample, because page
+    // breaks and headings sit in the tail of the distribution.
+    if (ys.length > 1) {
+      const gaps = [];
+      for (let i = 1; i < ys.length; i++) gaps.push(ys[i] - ys[i - 1]);
+      gaps.sort((a, b) => a - b);
+      const median = gaps[Math.floor(gaps.length / 2)];
+      lineMetrics = { y0: ys[0], pitch: median > 0 ? median : lineMetrics?.pitch || 19 };
+    }
+
+    const restoreIndex = startY == null ? 0 : Math.max(0, nearestLineForY(startY));
+    if (restoreIndex > 0) {
+      await moveCursor('down', restoreIndex);
+      await sleep(140);
+    }
+    await moveCursor('lineStart', 0);
+    if (scroller) scroller.scrollTop = restoreScroll;
+
+    return lineTable;
+  }
+
+  function ensureLineTable() {
+    dropStaleLineTable();
+    if (lineTable) return Promise.resolve(lineTable);
+    if (!buildingTable) {
+      buildingTable = buildLineTable().finally(() => {
+        buildingTable = null;
+      });
+    }
+    return buildingTable;
+  }
+
+  /** Closest measured line to a document-space Y, or -1 if nothing is close. */
+  function nearestLineForY(y) {
+    const ys = lineTable?.ys;
+    if (!ys?.length) {
+      if (!lineMetrics) return -1;
+      const index = Math.round((y - lineMetrics.y0) / lineMetrics.pitch);
+      return index >= 0 ? index : -1;
+    }
+
+    let lo = 0;
+    let hi = ys.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (ys[mid] < y) lo = mid + 1;
+      else hi = mid;
+    }
+
+    let best = -1;
+    let bestDy = Infinity;
+    for (const i of [lo - 1, lo, lo + 1]) {
+      if (i < 0 || i >= ys.length) continue;
+      const dy = Math.abs(ys[i] - y);
+      if (dy < bestDy) {
+        bestDy = dy;
+        best = i;
+      }
+    }
+
+    // Far from every measured line means the table no longer describes the page.
+    const tolerance = Math.max(lineMetrics?.pitch || 19, 12);
+    return bestDy <= tolerance ? best : -1;
+  }
+
   function caretLineIndexCanvas() {
-    if (!lineMetrics) return -1;
     const y = caretDocY();
     if (y == null) return -1;
+
+    dropStaleLineTable();
+    if (lineTable?.ys?.length) {
+      const measured = nearestLineForY(y);
+      if (measured >= 0) return measured;
+    }
+
+    if (!lineMetrics) return -1;
     const index = Math.round((y - lineMetrics.y0) / lineMetrics.pitch);
     return index >= 0 ? index : -1;
   }
@@ -1732,10 +1936,15 @@ const DocsUtils = (() => {
 
   function rectForModelLine(lineIndex) {
     const pitch = lineMetrics?.pitch || 19;
-    const y0 = lineMetrics?.y0 ?? 0;
     const scrollTop = getScrollContainer()?.scrollTop || 0;
+    const ys = lineTable?.ys;
+    const docY =
+      ys && lineIndex >= 0 && lineIndex < ys.length
+        ? ys[lineIndex]
+        : (lineMetrics?.y0 ?? 0) + pitch * lineIndex;
+
     return {
-      top: y0 + pitch * lineIndex - scrollTop,
+      top: docY - scrollTop,
       left: 72,
       width: 400,
       height: pitch
@@ -1761,37 +1970,55 @@ const DocsUtils = (() => {
     return lineIndex >= 0 && lineIndex < lines.length ? lines[lineIndex] : '';
   }
 
-  async function moveCursorToLineIndexCanvas(targetIndex) {
-    await ensureLineMetrics();
-    if (!lineMetrics) return false;
+  /** Ctrl+Home followed by N presses lands on line N whatever the line heights. */
+  async function walkFromDocumentStart(targetIndex) {
+    await moveCursor('documentStart', 0);
+    await sleep(200);
+    if (targetIndex > 0) {
+      await moveCursor('down', targetIndex);
+      await sleep(Math.min(700, 180 + targetIndex * 8));
+    }
+    await moveCursor('lineStart', 0);
+    await sleep(100);
+  }
 
+  async function moveCursorToLineIndexCanvas(targetIndex) {
+    if (targetIndex < 0) return false;
+
+    await ensureLineMetrics();
     await ExtensionContext.ensurePageMain();
     focusEditor();
     await sleep(120);
 
-    let from = caretLineIndexCanvas();
-    if (from < 0) {
-      await moveCursor('documentStart', 0);
-      await sleep(200);
-      from = 0;
+    // Relative hop first: cheap, and right whenever we can see where we are.
+    const from = caretLineIndexCanvas();
+    if (from >= 0) {
+      if (from !== targetIndex) {
+        const delta = targetIndex - from;
+        await moveCursor(delta > 0 ? 'down' : 'up', Math.abs(delta));
+        await sleep(180);
+      }
+      await moveCursor('lineStart', 0);
+      await sleep(80);
     }
 
-    if (from !== targetIndex) {
-      const delta = targetIndex - from;
-      await moveCursor(delta > 0 ? 'down' : 'up', Math.abs(delta));
-      await sleep(200);
+    if (from < 0 || caretLineIndexCanvas() !== targetIndex) {
+      await walkFromDocumentStart(targetIndex);
     }
 
-    const actual = caretLineIndexCanvas();
-    if (actual >= 0 && actual !== targetIndex) {
-      const delta = targetIndex - actual;
-      await moveCursor(delta > 0 ? 'down' : 'up', Math.abs(delta));
-      await sleep(180);
+    const landed = caretLineIndexCanvas();
+    if (landed === targetIndex) return true;
+
+    // The caret disagrees with the arithmetic. Measure the real line
+    // positions, then repeat the counted walk and judge against the map.
+    if (!lineTable) {
+      await ensureLineTable();
+      await walkFromDocumentStart(targetIndex);
+      return caretLineIndexCanvas() === targetIndex;
     }
 
-    await moveCursor('lineStart', 0);
-    await sleep(100);
-    return caretLineIndexCanvas() === targetIndex;
+    // Nothing measurable to check against, but the counted walk is exact.
+    return landed < 0;
   }
 
   function getEquationOnCursorLine() {
@@ -2132,6 +2359,44 @@ const DocsUtils = (() => {
     return observer;
   }
 
+  /**
+   * Whether freshly inserted text landed at the very end of the document.
+   * Only then is a trailing newline wanted — anywhere else the document
+   * already supplies the break, and adding one leaves a blank line behind.
+   * Compares document text rather than line numbers, which are approximate
+   * in canvas mode.
+   */
+  function insertLandedAtDocumentEnd(textBefore, textAfter, inserted) {
+    if (!textAfter) return true;
+
+    const needle = normalizeScanText(inserted).trim();
+    if (!needle) return true;
+
+    let i = 0;
+    while (i < textBefore.length && i < textAfter.length && textBefore[i] === textAfter[i]) {
+      i += 1;
+    }
+
+    const tail = textAfter.slice(i);
+    const rest = tail.startsWith(needle) ? tail.slice(needle.length) : tail.replace(needle, '');
+    return !rest.trim();
+  }
+
+  /** Start a fresh, empty line directly below the caret's line. */
+  async function openLineBelow() {
+    await ExtensionContext.ensurePageMain();
+    focusEditor();
+
+    await moveCursor('lineEnd', 0);
+    await sleep(120);
+
+    const ok = await insertText('\n', { cursorLeft: 0 });
+    await sleep(140);
+
+    resetKnownCaretLine();
+    return ok;
+  }
+
   return {
     EQ_OPEN,
     EQ_CLOSE,
@@ -2162,6 +2427,7 @@ const DocsUtils = (() => {
     replaceEquationZone,
     isCanvasMode,
     ensureLineMetrics,
+    ensureLineTable,
     invalidateLineMetrics,
     getModelLines,
     deleteEquationZone,
@@ -2173,6 +2439,8 @@ const DocsUtils = (() => {
     countInlineImages,
     waitForIframe,
     insertText,
+    insertLandedAtDocumentEnd,
+    openLineBelow,
     insertImagePng,
     moveCursorLeft,
     moveCursorAfterEquation,

@@ -56,7 +56,7 @@ function insertEquation(latex) {
 }
 
 /**
- * Get worksheet template examples (DigiMath Tutorials 1-4).
+ * Get introductory worksheet template examples.
  * @return {Array<object>} Template list
  */
 function getWorksheetTemplates() {

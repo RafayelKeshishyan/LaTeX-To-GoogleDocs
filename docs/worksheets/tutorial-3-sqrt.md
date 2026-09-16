@@ -1,6 +1,6 @@
 # Tutorial 3 — Square Roots
 
-**DigiMath Tutorial 3** | [Access Digi Math](https://accessuci.ics.uci.edu/digimath/)
+**Tutorial 3 — Square roots**
 
 ## Learning objective
 

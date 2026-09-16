@@ -1,10 +1,9 @@
 import {
   PRACTICE_CLASS_ID,
   type PadLibrary,
-  equationCount,
   sheetsInClass,
-  sheetLabel,
 } from '../lib/document';
+import { STUDENT_SIMPLE_UI } from '../lib/uiFlags';
 
 type NavigationProps = {
   library: PadLibrary;
@@ -30,11 +29,42 @@ export function SheetNavigation({
   onNewAssignment,
   onNewPractice,
 }: NavigationProps) {
-  const inClass = sheetsInClass(library, library.activeClassId);
-  const isPractice = library.activeClassId === PRACTICE_CLASS_ID;
+  const classId = STUDENT_SIMPLE_UI ? PRACTICE_CLASS_ID : library.activeClassId;
+  const inClass = sheetsInClass(library, classId);
+  const isPractice = classId === PRACTICE_CLASS_ID;
+
+  if (STUDENT_SIMPLE_UI) {
+    return (
+      <div className="sheet-bar sheet-navigation">
+        <label className="sheet-select-label">
+          Current practice page
+          <select
+            value={
+              inClass.some((s) => s.id === library.activeSheetId)
+                ? library.activeSheetId
+                : inClass[0]?.id
+            }
+            onChange={(e) => onSwitchSheet(e.target.value)}
+          >
+            {inClass.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="toolbar sheet-actions">
+          <button type="button" onClick={onNewPractice}>
+            New practice page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="sheet-bar sheet-navigation" role="region" aria-label="Choose class and page">
+    <div className="sheet-bar sheet-navigation">
       <label className="sheet-select-label">
         Current class
         <select
@@ -58,14 +88,13 @@ export function SheetNavigation({
         >
           {inClass.map((s) => (
             <option key={s.id} value={s.id}>
-              {sheetLabel(s)} ({equationCount(s)}{' '}
-              {equationCount(s) === 1 ? 'equation' : 'equations'})
+              {s.title}
             </option>
           ))}
         </select>
       </label>
 
-      <div className="toolbar sheet-actions" role="group" aria-label="Create work">
+      <div className="toolbar sheet-actions">
         {isPractice ? (
           <button type="button" onClick={onNewPractice}>
             New practice page
@@ -80,6 +109,7 @@ export function SheetNavigation({
   );
 }
 
+/** Kept for when STUDENT_SIMPLE_UI is turned off. */
 export function SheetManagement({
   library,
   onNewClass,
@@ -88,6 +118,8 @@ export function SheetManagement({
   onDeleteSheet,
   onDeleteClass,
 }: ManagementProps) {
+  if (STUDENT_SIMPLE_UI) return null;
+
   const isPractice = library.activeClassId === PRACTICE_CLASS_ID;
 
   return (
