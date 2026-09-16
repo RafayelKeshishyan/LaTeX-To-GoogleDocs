@@ -1213,9 +1213,9 @@ export default function App({
     }
 
     if (next.type === 'equation') {
-      requestLinearFocus(direction < 0 ? 'end' : 'start');
+      requestLinearFocus('end');
     } else {
-      requestProseFocus(direction < 0 ? 'end' : 'start');
+      requestProseFocus('end');
     }
   }
 
