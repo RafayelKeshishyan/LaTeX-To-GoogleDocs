@@ -63,12 +63,42 @@ function insertEquationImage(payload) {
 
   configureEquationImage_(image, parts);
   saveEquationMetadata_(image, parts.latex, parts.speech);
+  moveCursorBelowImage_(doc, image);
 
   return {
     success: true,
     message: 'Equation image inserted with alt text.',
     speech: parts.speech
   };
+}
+
+/**
+ * Put the next insertion on its own line. The sidebar keeps browser focus,
+ * while the saved Docs cursor moves to a new paragraph below the image.
+ */
+function moveCursorBelowImage_(doc, image) {
+  var paragraph = image.getParent();
+  if (!paragraph || typeof paragraph.getParent !== 'function') return false;
+
+  var container = paragraph.getParent();
+  if (!container ||
+      typeof container.getChildIndex !== 'function' ||
+      typeof container.insertParagraph !== 'function') {
+    return false;
+  }
+
+  var paragraphIndex = container.getChildIndex(paragraph);
+  if (paragraphIndex < 0) return false;
+
+  var nextParagraph = container.insertParagraph(paragraphIndex + 1, '');
+  var position;
+  if (doc.getActiveTab) {
+    position = doc.getActiveTab().asDocumentTab().newPosition(nextParagraph, 0);
+  } else {
+    position = doc.newPosition(nextParagraph, 0);
+  }
+  doc.setCursor(position);
+  return true;
 }
 
 /** List accessible equation images in document order. */

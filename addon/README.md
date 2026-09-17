@@ -14,6 +14,7 @@ For example, `y=x^2` is inserted as a visual equation whose alt description is â
 - NVDA and JAWS encounter a normal image with a short alt description in the document.
 - The visual KaTeX preview is hidden from the sidebar accessibility tree, avoiding its noisy internal markup.
 - The sidebar exposes the natural wording before insertion and has a **Read wording** button.
+- Each insertion advances the saved Docs cursor to a new paragraph, so consecutive equations appear one below another.
 - Equations inserted by the add-on can be loaded, replaced in place, or deleted from the sidebar.
 - Original LaTeX is stored in document properties so it can be edited later.
 

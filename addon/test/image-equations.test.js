@@ -89,6 +89,43 @@ vm.createContext(context);
 const source = fs.readFileSync(path.join(__dirname, '..', 'Code.gs'), 'utf8');
 vm.runInContext(source, context, { filename: 'Code.gs' });
 
+const paragraph = {};
+const nextParagraph = {};
+const paragraphContainer = {
+  getChildIndex(value) {
+    assert.equal(value, paragraph);
+    return 2;
+  },
+  insertParagraph(index, text) {
+    assert.equal(index, 3);
+    assert.equal(text, '');
+    return nextParagraph;
+  }
+};
+paragraph.getParent = () => paragraphContainer;
+let savedCursor = null;
+const cursorDocument = {
+  getActiveTab() {
+    return {
+      asDocumentTab() {
+        return {
+          newPosition(element, offset) {
+            assert.equal(element, nextParagraph);
+            assert.equal(offset, 0);
+            return { element, offset };
+          }
+        };
+      }
+    };
+  },
+  setCursor(position) { savedCursor = position; }
+};
+assert.equal(
+  context.moveCursorBelowImage_(cursorDocument, { getParent: () => paragraph }),
+  true
+);
+assert.deepEqual(savedCursor, { element: nextParagraph, offset: 0 });
+
 function payload(sourceText, speech, bytes) {
   return {
     latex: sourceText,
