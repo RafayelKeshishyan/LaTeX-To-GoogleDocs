@@ -9,6 +9,7 @@ function onOpen(e) {
   DocumentApp.getUi()
     .createAddonMenu()
     .addItem('LaTeX Equation Editor', 'showSidebar')
+    .addItem('Edit selected equation', 'showSidebarForSelectedEquation')
     .addToUi();
 }
 
@@ -23,7 +24,18 @@ function onInstall(e) {
  * Show the LaTeX equation sidebar.
  */
 function showSidebar() {
-  var html = HtmlService.createTemplateFromFile('Sidebar').evaluate()
+  showSidebar_(false);
+}
+
+/** Open the sidebar and load the equation currently selected in Docs. */
+function showSidebarForSelectedEquation() {
+  showSidebar_(true);
+}
+
+function showSidebar_(loadSelectedEquation) {
+  var template = HtmlService.createTemplateFromFile('Sidebar');
+  template.loadSelectedEquation = loadSelectedEquation;
+  var html = template.evaluate()
     .setTitle('LaTeX for Google Docs')
     .setWidth(320);
   DocumentApp.getUi().showSidebar(html);
@@ -114,6 +126,80 @@ function listEquationImages() {
       title: image.getAltTitle() || ACCESSIBLE_MATH_TITLE
     };
   });
+}
+
+/** Return the add-on equation image currently selected in Google Docs. */
+function getSelectedEquation() {
+  var doc = DocumentApp.getActiveDocument();
+  var selection = doc.getSelection();
+  if (!selection) {
+    return {
+      success: false,
+      error: 'Select one equation image in the document, then try again.'
+    };
+  }
+
+  var rangeElements = selection.getRangeElements
+    ? selection.getRangeElements()
+    : selection.getSelectedElements();
+  var selectedImages = rangeElements.map(function(rangeElement) {
+    return rangeElement.getElement();
+  }).filter(function(element) {
+    return element.getType() === DocumentApp.ElementType.INLINE_IMAGE &&
+      element.getAltTitle() === ACCESSIBLE_MATH_TITLE;
+  });
+
+  if (selectedImages.length !== 1) {
+    return {
+      success: false,
+      error: selectedImages.length > 1
+        ? 'Select only one equation image.'
+        : 'The selected item is not an equation created by this add-on.'
+    };
+  }
+
+  var selectedPath = elementPath_(selectedImages[0]);
+  var images = getEquationImages_();
+  var selectedIndex = -1;
+  for (var index = 0; index < images.length; index += 1) {
+    if (elementPath_(images[index]) === selectedPath) {
+      selectedIndex = index;
+      break;
+    }
+  }
+  if (selectedIndex < 0) {
+    return { success: false, error: 'The selected equation could not be located.' };
+  }
+
+  var image = images[selectedIndex];
+  var metadata = readEquationMetadata_(image);
+  if (!metadata || !metadata.latex) {
+    return {
+      success: false,
+      error: 'This equation has alt text but no saved LaTeX to edit.'
+    };
+  }
+
+  return {
+    success: true,
+    equation: {
+      index: selectedIndex,
+      latex: metadata.latex,
+      speech: metadata.speech || image.getAltDescription() || 'equation'
+    }
+  };
+}
+
+function elementPath_(element) {
+  var path = [];
+  var current = element;
+  while (current && typeof current.getParent === 'function') {
+    var parent = current.getParent();
+    if (!parent || typeof parent.getChildIndex !== 'function') break;
+    path.unshift(parent.getChildIndex(current));
+    current = parent;
+  }
+  return path.join('.');
 }
 
 /** Replace one add-on equation image while keeping its document position. */

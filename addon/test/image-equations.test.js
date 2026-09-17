@@ -25,6 +25,7 @@ class MockImage {
     this.height = 0;
   }
   getBlob() { return this.blob; }
+  getType() { return 'INLINE_IMAGE'; }
   getParent() { return this.parent; }
   getAltTitle() { return this.altTitle; }
   getAltDescription() { return this.altDescription; }
@@ -54,6 +55,7 @@ class MockBody {
 
 const body = new MockBody();
 let cursor = { insertInlineImage: (blob) => body.insertInlineImage(blob) };
+let selection = null;
 const values = new Map();
 const documentProperties = {
   setProperty(key, value) { values.set(key, value); },
@@ -65,9 +67,11 @@ const documentProperties = {
 const context = {
   console,
   DocumentApp: {
+    ElementType: { INLINE_IMAGE: 'INLINE_IMAGE' },
     getActiveDocument() {
       return {
         getCursor: () => cursor,
+        getSelection: () => selection,
         getBody: () => body
       };
     }
@@ -158,6 +162,19 @@ let listed = context.listEquationImages();
 assert.equal(listed.length, 1);
 assert.equal(listed[0].latex, 'y=x^2');
 assert.equal(listed[0].speech, 'y equals x squared');
+
+const nothingSelected = context.getSelectedEquation();
+assert.equal(nothingSelected.success, false);
+assert.match(nothingSelected.error, /Select one equation image/);
+selection = {
+  getRangeElements: () => [{ getElement: () => body.images[0] }]
+};
+const selectedEquation = context.getSelectedEquation();
+assert.equal(selectedEquation.success, true);
+assert.equal(selectedEquation.equation.index, 0);
+assert.equal(selectedEquation.equation.latex, 'y=x^2');
+assert.equal(selectedEquation.equation.speech, 'y equals x squared');
+selection = null;
 
 const oldImage = body.images[0];
 const replaced = context.replaceEquationImage(

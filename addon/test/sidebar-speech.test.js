@@ -34,5 +34,6 @@ for (const [latex, expected] of cases) {
 assert.doesNotMatch(html, /\.innerHTML\s*=/, 'Sidebar must not build accessible content with innerHTML.');
 assert.match(html, /class="visual-preview" aria-hidden="true"/);
 assert.match(html, /role="status" aria-live="assertive"/);
+assert.match(html, />\s*Edit selected equation from document\s*</);
 
 console.log('All sidebar speech and accessibility checks passed.');

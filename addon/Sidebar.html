@@ -101,7 +101,7 @@
     }
   </style>
 </head>
-<body>
+<body data-load-selected="<?= loadSelectedEquation ? 'true' : 'false' ?>">
   <main>
     <h1>Accessible Equation Editor</h1>
     <p class="subtitle">Type LaTeX, then insert an equation image with spoken alt text.</p>
@@ -134,6 +134,9 @@
         <h2 id="saved-heading">Equations in document</h2>
         <button class="secondary small-button" id="refresh-button" type="button">Refresh</button>
       </div>
+      <button class="secondary template-button" id="edit-selected-button" type="button">
+        Edit selected equation from document
+      </button>
       <p id="empty-list" class="hint">No accessible equation images yet.</p>
       <ol id="equation-list"></ol>
     </section>
@@ -159,6 +162,7 @@
     const clearButton = document.getElementById('clear-button');
     const cancelEditButton = document.getElementById('cancel-edit-button');
     const refreshButton = document.getElementById('refresh-button');
+    const editSelectedButton = document.getElementById('edit-selected-button');
     const equationList = document.getElementById('equation-list');
     const emptyList = document.getElementById('empty-list');
     const templateList = document.getElementById('template-list');
@@ -472,6 +476,25 @@
         .listEquationImages();
     }
 
+    function loadSelectedEquation() {
+      setStatus('Loading the selected equation.');
+      editSelectedButton.disabled = true;
+      google.script.run
+        .withSuccessHandler(function (result) {
+          editSelectedButton.disabled = false;
+          if (!result || !result.success) {
+            setStatus((result && result.error) || 'The selected equation could not be loaded.', 'error');
+            return;
+          }
+          editEquation(result.equation);
+        })
+        .withFailureHandler(function (error) {
+          editSelectedButton.disabled = false;
+          setStatus(error.message || 'The selected equation could not be loaded.', 'error');
+        })
+        .getSelectedEquation();
+    }
+
     function loadTemplate(latex) {
       stopEditing(false);
       latexInput.value = latex;
@@ -522,6 +545,7 @@
       latexInput.focus();
     });
     refreshButton.addEventListener('click', refreshEquations);
+    editSelectedButton.addEventListener('click', loadSelectedEquation);
 
     updatePreview();
     refreshEquations();
@@ -530,6 +554,7 @@
       .withFailureHandler(function () { templateList.textContent = 'Examples could not be loaded.'; })
       .getWorksheetTemplates();
     latexInput.focus();
+    if (document.body.dataset.loadSelected === 'true') loadSelectedEquation();
   </script>
 </body>
 </html>
