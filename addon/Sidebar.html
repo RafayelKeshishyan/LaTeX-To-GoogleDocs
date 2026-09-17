@@ -5,183 +5,531 @@
   <meta charset="UTF-8">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      font-size: 13px;
-      color: #202124;
+      margin: 0;
       padding: 12px;
+      color: #202124;
+      font: 13px/1.4 Arial, sans-serif;
     }
-    h1 { font-size: 15px; color: #1a73e8; margin-bottom: 4px; }
-    .subtitle { font-size: 11px; color: #5f6368; margin-bottom: 12px; }
-    label { display: block; font-weight: 500; margin-bottom: 4px; }
+    h1 { margin: 0 0 2px; color: #1a73e8; font-size: 16px; }
+    h2 { margin: 18px 0 6px; font-size: 14px; }
+    p { margin: 6px 0; }
+    .subtitle, .hint { color: #5f6368; font-size: 12px; }
+    label { display: block; margin: 12px 0 4px; font-weight: 700; }
     textarea {
       width: 100%;
-      height: 80px;
+      min-height: 92px;
       padding: 8px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      border: 1px solid #dadce0;
-      border-radius: 4px;
       resize: vertical;
+      border: 1px solid #80868b;
+      border-radius: 4px;
+      font: 14px/1.4 Consolas, "Courier New", monospace;
     }
-    .preview {
-      margin: 12px 0;
-      padding: 12px;
-      background: #f8f9fa;
+    textarea:focus, button:focus { outline: 3px solid #8ab4f8; outline-offset: 2px; }
+    .visual-preview {
+      min-height: 54px;
+      margin: 10px 0 6px;
+      padding: 8px;
+      overflow: auto;
       border: 1px solid #dadce0;
       border-radius: 4px;
-      min-height: 48px;
+      background: #fff;
       text-align: center;
     }
-    .preview-error { color: #d93025; font-size: 12px; }
-    .actions { display: flex; gap: 8px; margin-top: 8px; }
-    button {
-      flex: 1;
-      padding: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .btn-primary { background: #1a73e8; color: #fff; }
-    .btn-primary:hover { background: #1557b0; }
-    .btn-secondary { background: #f1f3f4; color: #202124; }
-    .templates { margin-top: 16px; }
-    .templates h2 { font-size: 12px; text-transform: uppercase; color: #5f6368; margin-bottom: 8px; }
-    .template-group { margin-bottom: 10px; }
-    .template-group h3 { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
-    .template-btn {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 6px 8px;
-      margin-bottom: 4px;
+    #render-surface {
+      display: inline-block;
+      min-width: 24px;
+      min-height: 20px;
+      padding: 4px 6px;
       background: #fff;
-      border: 1px solid #dadce0;
-      border-radius: 4px;
-      font-size: 12px;
-      cursor: pointer;
+      color: #202124;
+      white-space: nowrap;
     }
-    .template-btn:hover { background: #e8f0fe; }
-    .template-btn code { font-family: 'Courier New', monospace; color: #5f6368; }
-    #status { margin-top: 8px; font-size: 12px; color: #137333; }
-    #status.error { color: #d93025; }
-    footer { margin-top: 16px; text-align: center; }
-    footer a { font-size: 11px; color: #1a73e8; }
+    #preview-error { color: #b3261e; font-size: 12px; }
+    .speech-box {
+      padding: 7px 8px;
+      border-left: 3px solid #1a73e8;
+      background: #f8f9fa;
+    }
+    .actions { display: flex; gap: 8px; margin-top: 10px; }
+    button {
+      min-height: 38px;
+      padding: 7px 10px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 600;
+    }
+    button:disabled { cursor: wait; opacity: .65; }
+    .actions button { flex: 1; }
+    .primary { background: #1a73e8; color: #fff; }
+    .secondary { border-color: #dadce0; background: #f1f3f4; color: #202124; }
+    .danger { border-color: #f3c7c4; background: #fff; color: #b3261e; }
+    #status {
+      min-height: 20px;
+      margin-top: 10px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      color: #137333;
+    }
+    #status.error { background: #fce8e6; color: #b3261e; }
+    #status.success { background: #e6f4ea; }
+    .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .section-heading h2 { margin-bottom: 6px; }
+    .small-button { min-height: 32px; padding: 4px 8px; }
+    #equation-list { margin: 0; padding-left: 24px; }
+    #equation-list li { margin: 0 0 8px; }
+    .equation-actions { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+    .equation-actions .edit { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+    details { margin-top: 18px; }
+    summary { cursor: pointer; font-weight: 700; }
+    .template-group { margin-top: 10px; }
+    .template-group h3 { margin: 0 0 4px; font-size: 13px; }
+    .template-button { display: block; width: 100%; margin: 4px 0; text-align: left; }
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
   </style>
 </head>
 <body>
-  <h1>LaTeX Equation Editor</h1>
-  <p class="subtitle">Insert ⟦eq⟧...⟦/eq⟧ equation zones</p>
+  <main>
+    <h1>Accessible Equation Editor</h1>
+    <p class="subtitle">Type LaTeX, then insert an equation image with spoken alt text.</p>
 
-  <label for="latex-input">LaTeX</label>
-  <textarea id="latex-input" placeholder="y=\sqrt{x + 3}"></textarea>
+    <label for="latex-input">Linear LaTeX</label>
+    <textarea id="latex-input" spellcheck="false" aria-describedby="input-help"
+      placeholder="Example: y=\sqrt{x + 3}"></textarea>
+    <p id="input-help" class="hint">Press Alt+Enter to insert. Enter alone starts a new line.</p>
 
-  <div class="preview" id="preview">
-    <span class="preview-placeholder">Preview appears here</span>
-  </div>
+    <div class="visual-preview" aria-hidden="true">
+      <div id="render-surface"></div>
+    </div>
+    <p id="preview-error" role="alert"></p>
 
-  <div class="actions">
-    <button class="btn-primary" id="btn-insert" type="button">Insert at Cursor</button>
-    <button class="btn-secondary" id="btn-clear" type="button">Clear</button>
-  </div>
+    <p class="speech-box"><strong>Math wording:</strong> <span id="speech-preview">empty equation</span></p>
 
-  <p id="status"></p>
+    <div class="actions">
+      <button class="primary" id="insert-button" type="button">Insert at cursor</button>
+      <button class="secondary" id="read-button" type="button">Read wording</button>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="clear-button" type="button">Clear</button>
+      <button class="secondary" id="cancel-edit-button" type="button" hidden>Cancel edit</button>
+    </div>
 
-  <section class="templates">
-    <h2>Practice Worksheets</h2>
-    <div id="template-list">Loading templates...</div>
-  </section>
+    <p id="status" role="status" aria-live="assertive" aria-atomic="true"></p>
+
+    <section aria-labelledby="saved-heading">
+      <div class="section-heading">
+        <h2 id="saved-heading">Equations in document</h2>
+        <button class="secondary small-button" id="refresh-button" type="button">Refresh</button>
+      </div>
+      <p id="empty-list" class="hint">No accessible equation images yet.</p>
+      <ol id="equation-list"></ol>
+    </section>
+
+    <details>
+      <summary>Practice examples</summary>
+      <div id="template-list"><p class="hint">Loading examples.</p></div>
+    </details>
+  </main>
 
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script>
+    'use strict';
+
     const latexInput = document.getElementById('latex-input');
-    const preview = document.getElementById('preview');
+    const renderSurface = document.getElementById('render-surface');
+    const previewError = document.getElementById('preview-error');
+    const speechPreview = document.getElementById('speech-preview');
     const status = document.getElementById('status');
-    const btnInsert = document.getElementById('btn-insert');
-    const btnClear = document.getElementById('btn-clear');
+    const insertButton = document.getElementById('insert-button');
+    const readButton = document.getElementById('read-button');
+    const clearButton = document.getElementById('clear-button');
+    const cancelEditButton = document.getElementById('cancel-edit-button');
+    const refreshButton = document.getElementById('refresh-button');
+    const equationList = document.getElementById('equation-list');
+    const emptyList = document.getElementById('empty-list');
     const templateList = document.getElementById('template-list');
+    let editingIndex = null;
+
+    const greek = {
+      alpha: 'alpha', beta: 'beta', gamma: 'gamma', delta: 'delta', epsilon: 'epsilon',
+      theta: 'theta', lambda: 'lambda', mu: 'mu', pi: 'pi', rho: 'rho', sigma: 'sigma',
+      phi: 'phi', psi: 'psi', omega: 'omega'
+    };
+    const symbols = {
+      pm: 'plus or minus', mp: 'minus or plus', times: 'times', div: 'divided by', cdot: 'times',
+      leq: 'less than or equal to', le: 'less than or equal to', geq: 'greater than or equal to',
+      ge: 'greater than or equal to', neq: 'not equal to', approx: 'approximately equal to',
+      infty: 'infinity', to: 'approaches', rightarrow: 'approaches', dots: 'dot dot dot',
+      ldots: 'dot dot dot'
+    };
+    const functions = {
+      sin: 'sine', cos: 'cosine', tan: 'tangent', log: 'log', ln: 'natural log', exp: 'exponential'
+    };
+    const operators = {
+      '=': 'equals', '+': 'plus', '-': 'minus', '*': 'times', '/': 'divided by',
+      '(': 'open parenthesis', ')': 'close parenthesis', '[': 'open bracket', ']': 'close bracket',
+      '<': 'less than', '>': 'greater than', ',': 'comma'
+    };
+
+    function matchBrace(source, openIndex) {
+      let depth = 0;
+      for (let i = openIndex; i < source.length; i += 1) {
+        if (source[i] === '\\') { i += 1; continue; }
+        if (source[i] === '{') depth += 1;
+        if (source[i] === '}' && --depth === 0) return i;
+      }
+      return -1;
+    }
+
+    function readArgument(source, start) {
+      let index = start;
+      while (/\s/.test(source[index] || '')) index += 1;
+      if (source[index] === '{') {
+        const close = matchBrace(source, index);
+        return close < 0
+          ? { text: source.slice(index + 1), next: source.length }
+          : { text: source.slice(index + 1, close), next: close + 1 };
+      }
+      if (source[index] === '\\') {
+        const command = /^\\([a-zA-Z]+|.)/.exec(source.slice(index));
+        if (command) return { text: command[0], next: index + command[0].length };
+      }
+      return { text: source[index] || '', next: Math.min(index + 1, source.length) };
+    }
+
+    function speakPower(text) {
+      const value = text.trim();
+      if (value === '2') return 'squared';
+      if (value === '3') return 'cubed';
+      return 'to the power of ' + speakSegment(value);
+    }
+
+    function speakCommand(source, start) {
+      const found = /^\\([a-zA-Z]+|.)/.exec(source.slice(start));
+      if (!found) return null;
+      const name = found[1];
+      let next = start + found[0].length;
+
+      if (name === 'frac' || name === 'dfrac' || name === 'tfrac') {
+        const top = readArgument(source, next);
+        const bottom = readArgument(source, top.next);
+        return {
+          text: 'the fraction with numerator ' + speakSegment(top.text) +
+            ' and denominator ' + speakSegment(bottom.text),
+          next: bottom.next
+        };
+      }
+      if (name === 'sqrt') {
+        let rootName = 'square';
+        if (source[next] === '[') {
+          const close = source.indexOf(']', next);
+          if (close >= 0) {
+            const index = source.slice(next + 1, close).trim();
+            rootName = index === '3' ? 'cube' : index + 'th';
+            next = close + 1;
+          }
+        }
+        const body = readArgument(source, next);
+        return { text: 'the ' + rootName + ' root of ' + speakSegment(body.text), next: body.next };
+      }
+      if (name === 'text' || name === 'mathrm' || name === 'operatorname') {
+        const body = readArgument(source, next);
+        return { text: body.text.trim(), next: body.next };
+      }
+      if (name === 'sum' || name === 'prod' || name === 'int') {
+        const labels = { sum: 'the sum', prod: 'the product', int: 'the integral' };
+        let lower = null;
+        let upper = null;
+        for (let count = 0; count < 2; count += 1) {
+          if (source[next] === '_') { lower = readArgument(source, next + 1); next = lower.next; }
+          else if (source[next] === '^') { upper = readArgument(source, next + 1); next = upper.next; }
+        }
+        let text = labels[name];
+        if (lower) text += ' from ' + speakSegment(lower.text);
+        if (upper) text += ' to ' + speakSegment(upper.text);
+        return { text: text, next: next };
+      }
+      if (name === 'left' || name === 'right' || name === ',' || name === ';' || name === 'quad') {
+        return { text: '', next: next };
+      }
+      return { text: greek[name] || symbols[name] || functions[name] || name, next: next };
+    }
+
+    function speakSegment(source) {
+      const words = [];
+      let literal = '';
+      function flush() {
+        if (literal) words.push(literal);
+        literal = '';
+      }
+      for (let index = 0; index < source.length;) {
+        const character = source[index];
+        if (/\s/.test(character)) { flush(); index += 1; continue; }
+        if (character === '{') {
+          const close = matchBrace(source, index);
+          flush();
+          words.push(speakSegment(close < 0 ? source.slice(index + 1) : source.slice(index + 1, close)));
+          index = close < 0 ? source.length : close + 1;
+          continue;
+        }
+        if (character === '}') { index += 1; continue; }
+        if (character === '^' || character === '_') {
+          const argument = readArgument(source, index + 1);
+          flush();
+          words.push(character === '^' ? speakPower(argument.text) : 'sub ' + speakSegment(argument.text));
+          index = argument.next;
+          continue;
+        }
+        if (character === '\\') {
+          const command = speakCommand(source, index);
+          flush();
+          if (command && command.text) words.push(command.text);
+          index = command ? command.next : index + 1;
+          continue;
+        }
+        if (operators[character]) {
+          flush();
+          words.push(operators[character]);
+          index += 1;
+          continue;
+        }
+        literal += character;
+        index += 1;
+      }
+      flush();
+      return words.join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function naturalSpeech(latex) {
+      return latex.trim() ? (speakSegment(latex.trim()) || 'empty equation') : 'empty equation';
+    }
+
+    function setStatus(message, kind) {
+      status.textContent = '';
+      status.className = kind || '';
+      window.setTimeout(function () { status.textContent = message || ''; }, 10);
+    }
 
     function updatePreview() {
       const latex = latexInput.value.trim();
-      if (!latex) {
-        preview.innerHTML = '<span class="preview-placeholder">Preview appears here</span>';
-        return;
-      }
+      speechPreview.textContent = naturalSpeech(latex);
+      previewError.textContent = '';
+      renderSurface.textContent = '';
+      if (!latex) return false;
       try {
-        preview.innerHTML = '';
-        katex.render(latex, preview, { throwOnError: true, displayMode: false });
-      } catch (e) {
-        preview.innerHTML = '<span class="preview-error">' + e.message + '</span>';
+        katex.render(latex, renderSurface, {
+          throwOnError: true,
+          displayMode: false,
+          output: 'html'
+        });
+        return true;
+      } catch (error) {
+        previewError.textContent = 'LaTeX error: ' + error.message;
+        return false;
       }
     }
 
-    latexInput.addEventListener('input', updatePreview);
-
-    btnInsert.addEventListener('click', () => {
-      const latex = latexInput.value;
-      status.textContent = 'Inserting...';
-      status.className = '';
-      google.script.run
-        .withSuccessHandler((result) => {
-          if (result.success) {
-            status.textContent = 'Equation inserted!';
-          } else {
-            status.textContent = result.error || 'Insert failed.';
-            status.className = 'error';
-          }
-        })
-        .withFailureHandler((err) => {
-          status.textContent = err.message;
-          status.className = 'error';
-        })
-        .insertEquation(latex);
-    });
-
-    btnClear.addEventListener('click', () => {
-      latexInput.value = '';
-      updatePreview();
-      status.textContent = '';
-    });
-
-    function loadTemplate(latex) {
-      latexInput.value = latex;
-      updatePreview();
-      latexInput.focus();
+    async function buildImagePayload() {
+      const latex = latexInput.value.trim();
+      if (!latex) throw new Error('Type LaTeX first.');
+      if (!updatePreview()) throw new Error('Correct the LaTeX error before inserting.');
+      if (typeof html2canvas !== 'function') throw new Error('The image renderer did not load. Reopen the sidebar.');
+      await document.fonts.ready;
+      const box = renderSurface.getBoundingClientRect();
+      const canvas = await html2canvas(renderSurface, {
+        backgroundColor: '#ffffff',
+        logging: false,
+        scale: 3,
+        useCORS: true
+      });
+      return {
+        latex: latex,
+        speech: naturalSpeech(latex),
+        dataUrl: canvas.toDataURL('image/png'),
+        width: Math.ceil(box.width),
+        height: Math.ceil(box.height)
+      };
     }
 
-    function renderTemplates(templates) {
-      templateList.innerHTML = '';
-      templates.forEach((group) => {
-        const div = document.createElement('div');
-        div.className = 'template-group';
-        const h3 = document.createElement('h3');
-        h3.textContent = group.title;
-        div.appendChild(h3);
-        group.examples.forEach((ex) => {
-          const btn = document.createElement('button');
-          btn.className = 'template-btn';
-          btn.type = 'button';
-          btn.innerHTML = ex.label + ' <code>' + ex.latex + '</code>';
-          btn.addEventListener('click', () => loadTemplate(ex.latex));
-          div.appendChild(btn);
-        });
-        templateList.appendChild(div);
+    function setBusy(busy) {
+      insertButton.disabled = busy;
+      refreshButton.disabled = busy;
+      insertButton.textContent = busy ? 'Working...' : (editingIndex === null ? 'Insert at cursor' : 'Replace equation');
+    }
+
+    async function saveEquation() {
+      setStatus('Preparing equation image.');
+      setBusy(true);
+      try {
+        const payload = await buildImagePayload();
+        const runner = google.script.run
+          .withSuccessHandler(function (result) {
+            setBusy(false);
+            if (!result || !result.success) {
+              setStatus((result && result.error) || 'The equation could not be saved.', 'error');
+              return;
+            }
+            const action = editingIndex === null ? 'Inserted' : 'Replaced';
+            setStatus(action + ': ' + payload.speech, 'success');
+            stopEditing(false);
+            refreshEquations();
+            latexInput.focus();
+          })
+          .withFailureHandler(function (error) {
+            setBusy(false);
+            setStatus(error.message || 'Google Docs could not save the equation.', 'error');
+          });
+        if (editingIndex === null) runner.insertEquationImage(payload);
+        else runner.replaceEquationImage(editingIndex, payload);
+      } catch (error) {
+        setBusy(false);
+        setStatus(error.message, 'error');
+      }
+    }
+
+    function stopEditing(clearInput) {
+      editingIndex = null;
+      insertButton.textContent = 'Insert at cursor';
+      cancelEditButton.hidden = true;
+      if (clearInput) {
+        latexInput.value = '';
+        updatePreview();
+      }
+    }
+
+    function editEquation(equation) {
+      editingIndex = equation.index;
+      latexInput.value = equation.latex || '';
+      updatePreview();
+      insertButton.textContent = 'Replace equation';
+      cancelEditButton.hidden = false;
+      setStatus('Editing equation ' + (equation.index + 1) + ': ' + equation.speech);
+      latexInput.focus();
+      latexInput.select();
+    }
+
+    function deleteEquation(equation) {
+      const number = equation.index + 1;
+      setStatus('Deleting equation ' + number + '.');
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (!result || !result.success) {
+            setStatus((result && result.error) || 'Delete failed.', 'error');
+            return;
+          }
+          stopEditing(false);
+          setStatus('Equation ' + number + ' deleted.', 'success');
+          refreshEquations();
+        })
+        .withFailureHandler(function (error) { setStatus(error.message, 'error'); })
+        .deleteEquationImage(equation.index);
+    }
+
+    function renderEquationList(equations) {
+      equationList.textContent = '';
+      emptyList.hidden = equations.length > 0;
+      equations.forEach(function (equation) {
+        const item = document.createElement('li');
+        const actions = document.createElement('div');
+        actions.className = 'equation-actions';
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'secondary edit';
+        edit.textContent = equation.speech;
+        edit.setAttribute('aria-label', 'Edit equation ' + (equation.index + 1) + ': ' + equation.speech);
+        edit.addEventListener('click', function () { editEquation(equation); });
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'danger';
+        remove.textContent = 'Delete';
+        remove.setAttribute('aria-label', 'Delete equation ' + (equation.index + 1) + ': ' + equation.speech);
+        remove.addEventListener('click', function () { deleteEquation(equation); });
+        actions.appendChild(edit);
+        actions.appendChild(remove);
+        item.appendChild(actions);
+        equationList.appendChild(item);
       });
     }
 
+    function refreshEquations() {
+      google.script.run
+        .withSuccessHandler(renderEquationList)
+        .withFailureHandler(function (error) { setStatus(error.message || 'Could not load equations.', 'error'); })
+        .listEquationImages();
+    }
+
+    function loadTemplate(latex) {
+      stopEditing(false);
+      latexInput.value = latex;
+      updatePreview();
+      latexInput.focus();
+      latexInput.select();
+    }
+
+    function renderTemplates(groups) {
+      templateList.textContent = '';
+      groups.forEach(function (group) {
+        const section = document.createElement('section');
+        section.className = 'template-group';
+        const heading = document.createElement('h3');
+        heading.textContent = group.title;
+        section.appendChild(heading);
+        group.examples.forEach(function (example) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'secondary template-button';
+          button.textContent = example.label + ': ' + example.latex;
+          button.addEventListener('click', function () { loadTemplate(example.latex); });
+          section.appendChild(button);
+        });
+        templateList.appendChild(section);
+      });
+    }
+
+    latexInput.addEventListener('input', updatePreview);
+    latexInput.addEventListener('keydown', function (event) {
+      if (event.altKey && !event.shiftKey && event.key === 'Enter') {
+        event.preventDefault();
+        saveEquation();
+      }
+    });
+    insertButton.addEventListener('click', saveEquation);
+    readButton.addEventListener('click', function () {
+      setStatus('Math wording: ' + naturalSpeech(latexInput.value));
+    });
+    clearButton.addEventListener('click', function () {
+      stopEditing(true);
+      setStatus('Editor cleared.');
+      latexInput.focus();
+    });
+    cancelEditButton.addEventListener('click', function () {
+      stopEditing(false);
+      setStatus('Editing canceled.');
+      latexInput.focus();
+    });
+    refreshButton.addEventListener('click', refreshEquations);
+
+    updatePreview();
+    refreshEquations();
     google.script.run
       .withSuccessHandler(renderTemplates)
-      .withFailureHandler(() => {
-        templateList.textContent = 'Could not load templates.';
-      })
+      .withFailureHandler(function () { templateList.textContent = 'Examples could not be loaded.'; })
       .getWorksheetTemplates();
-
-    // Default example
-    latexInput.value = 'y=\\sqrt{x + 3}';
-    updatePreview();
+    latexInput.focus();
   </script>
 </body>
 </html>

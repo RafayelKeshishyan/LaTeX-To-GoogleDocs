@@ -3,6 +3,7 @@
   "private": true,
   "description": "Monorepo scripts. Digi Math Pad lives in pad/; Chrome extension in extension/.",
   "scripts": {
+    "addon:test": "node addon/test/image-equations.test.js && node addon/test/sidebar-speech.test.js",
     "pad": "npm --prefix pad run dev",
     "pad:build": "npm --prefix pad run build"
   }

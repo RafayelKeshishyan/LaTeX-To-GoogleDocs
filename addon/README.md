@@ -1,110 +1,112 @@
-# Google Workspace Add-on — LaTeX for Google Docs
+# Accessible Equation Images for Google Docs
 
-Sidebar add-on for inserting LaTeX equation zones (`⟦eq⟧...⟦/eq⟧`) into Google Docs. Secondary delivery for schools that block Chrome extensions.
+This Google Workspace add-on provides a deliberately simple workflow for blind students:
 
-## Features
+1. Put the Google Docs cursor where the equation belongs.
+2. Open the add-on sidebar and type linear LaTeX.
+3. Press `Alt+Enter` or activate **Insert at cursor**.
+4. The add-on inserts a rendered PNG with concise math wording in its image alt description.
 
-- LaTeX editor with live KaTeX preview
-- Insert equation delimiters at cursor
-- Introductory LaTeX worksheet templates
+For example, `y=x^2` is inserted as a visual equation whose alt description is “y equals x squared.” No visible `⟦eq⟧` codes are added to the document.
 
-## Prerequisites
+## What this version is designed to improve
 
-- [Node.js](https://nodejs.org/) (for clasp CLI)
-- Google account with Google Docs access
-- [clasp](https://github.com/google/clasp) — Google Apps Script CLI
+- NVDA and JAWS encounter a normal image with a short alt description in the document.
+- The visual KaTeX preview is hidden from the sidebar accessibility tree, avoiding its noisy internal markup.
+- The sidebar exposes the natural wording before insertion and has a **Read wording** button.
+- Equations inserted by the add-on can be loaded, replaced in place, or deleted from the sidebar.
+- Original LaTeX is stored in document properties so it can be edited later.
 
-## Setup with clasp
+## Important limitation
 
-### 1. Install clasp
+The equation is an image with flat alt text, not structurally navigable math. A screen reader can read “the fraction with numerator … and denominator …,” but MathCAT cannot move through the numerator and denominator as separate structures. Google Docs may also announce its own words such as “image,” “application,” or document/container labels; the add-on cannot suppress those because they belong to Google Docs.
 
-```bash
-npm install -g @google/clasp
-```
-
-### 2. Login to Google
-
-```bash
-clasp login
-```
-
-### 3. Create Apps Script project
-
-From the `addon/` directory:
-
-```bash
-cd addon
-clasp create --type docs --title "LaTeX for Google Docs" --rootDir .
-```
-
-This creates `.clasp.json` (gitignored — contains script ID).
-
-### 4. Push code
-
-```bash
-clasp push
-```
-
-### 5. Deploy as test add-on
-
-```bash
-clasp open
-```
-
-In the Apps Script editor:
-
-1. Click **Deploy** → **Test deployments**
-2. Select type **Editor add-on**
-3. Install for your account
-
-### 6. Use in Google Docs
-
-1. Open a Google Doc
-2. **Extensions** → **LaTeX for Google Docs** → **LaTeX Equation Editor**
-3. Type LaTeX, preview renders live
-4. Click **Insert at Cursor**
+This is intended as a practical basic-math workflow, not a replacement for a dedicated accessible math editor.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `appsscript.json` | Manifest (scopes, runtime) |
-| `Code.gs` | Server-side: sidebar, insert, templates |
-| `Sidebar.html` | Client UI with KaTeX preview |
+| `appsscript.json` | Apps Script runtime and least-privilege document scopes |
+| `Code.gs` | Inserts images, sets alt text, and saves editing metadata |
+| `Sidebar.html` | Accessible editor, KaTeX preview, PNG renderer, and equation list |
+| `test/image-equations.test.js` | Local server-side behavior tests |
 
-## KaTeX loading (CDN)
+## Local test
 
-The add-on sidebar loads KaTeX from jsDelivr CDN. This is intentional: Google Apps Script `HtmlService` runs in Google's sandbox, which allows external scripts, unlike the Chrome extension's Manifest V3 CSP (`script-src 'self'`). The extension vendors KaTeX locally under `extension/lib/katex/`; the add-on does not share that bundle because clasp/GAS does not support binary font assets cleanly.
+From the repository root:
 
-## Equation format
-
-Equations are inserted as plain text delimiters:
-
-```
-⟦eq⟧y=\sqrt{x+3}⟦/eq⟧
+```bash
+node addon/test/image-equations.test.js
 ```
 
-Students with the **Chrome extension** get Alt+= / Enter / F2 workflow and KaTeX overlays. Users with only the add-on see delimiter text and can use the sidebar to insert/edit.
+## Install in one test document
 
-## Publishing (production)
+Start with a document-bound Apps Script project so the add-on can read the user's Docs cursor. Google documents this same setup for its Docs add-on quickstart.
 
-For school-wide deployment:
+1. Create a new Google Doc for testing.
+2. In that document, choose **Extensions → Apps Script**.
+3. In Apps Script, open **Project Settings** and copy the Script ID.
+4. Enable **Show `appsscript.json` manifest file in editor**.
 
-1. Create a Google Cloud project
-2. Configure OAuth consent screen
-3. Submit add-on to [Google Workspace Marketplace](https://developers.google.com/workspace/marketplace)
+You can paste the three project files into the Apps Script editor, or push this directory with clasp. For clasp, install and log in:
 
-See [Google Apps Script add-on documentation](https://developers.google.com/apps-script/add-ons).
+```bash
+npm install -g @google/clasp
+clasp login
+cd addon
+```
 
-## Limitations
+Before `clasp push`, create an untracked `addon/.clasp.json` containing the Script ID from the bound project:
 
-- Cannot intercept Alt+= (requires Chrome extension)
-- No F2 Linear/Professional toggle from sidebar alone
-- Insertion is plain text — rendering requires extension
-- `DocumentApp` cannot insert native Google Docs equations
+```json
+{
+  "scriptId": "PASTE_THE_SCRIPT_ID_HERE",
+  "rootDir": "."
+}
+```
 
-## Related
+Push the files:
+
+```bash
+clasp push
+```
+
+Then:
+
+1. In Apps Script, run `onOpen` once and approve the requested current-document permission.
+2. Reload the Google Doc.
+3. Use **Extensions → Accessible Equations for Google Docs → LaTeX Equation Editor**.
+
+Do not create a standalone Apps Script project for this prototype. The cursor APIs used for insertion require document-bound execution. Marketplace packaging can be done after the NVDA and JAWS behavior is proven.
+
+The sidebar uses KaTeX and html2canvas from jsDelivr. The school network must allow that CDN. For a production Marketplace release, vendor those browser assets or use an approved asset host.
+
+## NVDA and JAWS acceptance test
+
+1. In an empty document, type a sentence and press Enter.
+2. Leave the Docs cursor on the blank line and open the sidebar.
+3. Type `y=x^2`, press **Read wording**, and verify “y equals x squared.”
+4. Press `Alt+Enter` and wait for “Inserted: y equals x squared.”
+5. Return to the document and navigate across the image. Record exactly what the screen reader says.
+6. Repeat with `y=\sqrt{x+3}` and `\frac{3}{4}`.
+7. Reopen or refresh the sidebar, select an equation under **Equations in document**, change it, and activate **Replace equation**.
+8. Run the same test once with NVDA/Chrome and once with JAWS/Chrome.
+
+Success means the equation’s natural wording is spoken in the document without visible delimiter codes. Extra Google Docs container announcements are a platform limitation, but repeated preview markup or add-on-generated “frame/document” chatter is a bug.
+
+## Known constraints
+
+- The add-on cannot intercept keystrokes while focus is in the Google Docs editing canvas.
+- `Alt+Enter` works while focus is in the sidebar’s LaTeX field.
+- The Docs cursor must be placed before focus moves into the sidebar.
+- The add-on does not create native Google Docs equation objects.
+- Image alt text provides a linear description, not interactive mathematical structure or Nemeth braille.
+- Production publication requires a Google Cloud project, OAuth consent configuration, and Google Workspace Marketplace review.
+
+## Related project material
 
 - Chrome extension: `../extension/`
-- TVI guide: `../docs/tvi-guide.md`
+- Blind-student test: `../docs/blind-student-test.md`
 - Acceptance test: `../docs/acceptance-test.md`
+- Accessibility retrospective: `../docs/docs-extension-a11y-retrospective.md`
