@@ -578,8 +578,18 @@ const DocsUtils = (() => {
     }
 
     // Re-resolve against the live document so a shifted line still matches.
+    const liveEquations = listEquationsOrdered();
     const current =
-      listEquationsOrdered().find((eq) => latexMatches(eq.latex, equation.latex)) ||
+      liveEquations.find(
+        (eq) =>
+          eq.lineIndex === equation.lineIndex &&
+          latexMatches(eq.latex, equation.latex)
+      ) ||
+      liveEquations.find(
+        (eq) =>
+          eq.start === equation.start && latexMatches(eq.latex, equation.latex)
+      ) ||
+      liveEquations.find((eq) => latexMatches(eq.latex, equation.latex)) ||
       equation;
 
     const oldFull = current.fullMatch || zoneText(current.latex);
@@ -646,13 +656,32 @@ const DocsUtils = (() => {
   function describeReplaceProblem(before, after, parts) {
     if (!before) return null;
 
-    const zones = findZones(after);
-    if (!zones.some((zone) => latexMatches(zone.latex, parts.newLatex))) {
+    const sameZone =
+      typeof InsertionVerification !== 'undefined' &&
+      InsertionVerification.normalize(parts.oldFull) ===
+        InsertionVerification.normalize(parts.newFull);
+
+    if (
+      !sameZone &&
+      (typeof InsertionVerification === 'undefined' ||
+        !InsertionVerification.insertedTextCountIncreased(
+          before,
+          after,
+          parts.newFull
+        ))
+    ) {
       return 'The new equation was not written, so the change was undone.';
     }
 
-    const sameLatex = latexMatches(parts.oldLatex, parts.newLatex);
-    if (!sameLatex && zones.some((zone) => latexMatches(zone.latex, parts.oldLatex))) {
+    if (
+      !sameZone &&
+      (typeof InsertionVerification === 'undefined' ||
+        !InsertionVerification.textCountDecreased(
+          before,
+          after,
+          parts.oldFull
+        ))
+    ) {
       return 'The old equation is still there, so the change was undone.';
     }
 
@@ -676,10 +705,10 @@ const DocsUtils = (() => {
       return 'Nothing was deleted. Click the equation line and try again.';
     }
 
-    const stillThere = findZones(after).some((zone) =>
-      latexMatches(zone.latex, equation.latex)
-    );
-    if (stillThere) {
+    const removedOne =
+      typeof InsertionVerification !== 'undefined' &&
+      InsertionVerification.textCountDecreased(before, after, fullMatch);
+    if (!removedOne) {
       return 'That equation is still there. Click the equation line and try again.';
     }
 
@@ -2367,19 +2396,12 @@ const DocsUtils = (() => {
    * in canvas mode.
    */
   function insertLandedAtDocumentEnd(textBefore, textAfter, inserted) {
-    if (!textAfter) return true;
-
-    const needle = normalizeScanText(inserted).trim();
-    if (!needle) return true;
-
-    let i = 0;
-    while (i < textBefore.length && i < textAfter.length && textBefore[i] === textAfter[i]) {
-      i += 1;
-    }
-
-    const tail = textAfter.slice(i);
-    const rest = tail.startsWith(needle) ? tail.slice(needle.length) : tail.replace(needle, '');
-    return !rest.trim();
+    if (typeof InsertionVerification === 'undefined') return false;
+    return InsertionVerification.landedAtDocumentEnd(
+      textBefore,
+      textAfter,
+      inserted
+    );
   }
 
   /** Start a fresh, empty line directly below the caret's line. */

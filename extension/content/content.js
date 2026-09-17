@@ -343,17 +343,24 @@
         }
 
         if (msg.action === 'insertLatex' && msg.replace && editTarget) {
-          DocumentBridge.replaceEquation(editTarget, msg.latex).then((result) => {
-            if (result?.ok) {
-              editTarget = {
-                ...editTarget,
-                latex: result.latex,
-                fullMatch: result.fullMatch,
-                lineIndex: result.lineIndex ?? editTarget.lineIndex
-              };
-            }
-            sendResponse(result);
-          });
+          DocumentBridge.replaceEquation(editTarget, msg.latex)
+            .then((result) => {
+              if (result?.ok) {
+                editTarget = {
+                  ...editTarget,
+                  latex: result.latex,
+                  fullMatch: result.fullMatch,
+                  lineIndex: result.lineIndex ?? editTarget.lineIndex
+                };
+              }
+              sendResponse(result);
+            })
+            .catch((err) =>
+              sendResponse({
+                ok: false,
+                error: String(err?.message || err || 'Replace failed.')
+              })
+            );
           return true;
         }
 
@@ -362,8 +369,16 @@
             skipImage: msg.skipImage !== false,
             skipAnnounce: msg.skipAnnounce === true,
             fastReturn: msg.fastReturn === true,
-            newLine: msg.newLine === true
-          }).then(sendResponse);
+            newLine: msg.newLine === true,
+            safeAuthoring: msg.safeAuthoring === true
+          })
+            .then(sendResponse)
+            .catch((err) =>
+              sendResponse({
+                ok: false,
+                error: String(err?.message || err || 'Insert failed.')
+              })
+            );
           return true;
         }
 

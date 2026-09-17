@@ -85,7 +85,7 @@
       <dd>Open the equation editor (fallback if Alt+= is taken)</dd>
 
       <dt>Alt+Enter</dt>
-      <dd>Insert the equation at the cursor</dd>
+      <dd>Insert a standalone equation and return focus to Linear LaTeX</dd>
 
       <dt>Alt+Shift+Enter</dt>
       <dd>Start a new line below the cursor and insert the equation there</dd>
@@ -120,7 +120,7 @@
         <input type="radio" name="speech-mode" value="screenReader" checked>
         <span>My screen reader (NVDA, JAWS, Narrator, VoiceOver)</span>
       </label>
-      <p class="help">The extension writes a live region; your screen reader speaks it. After Alt+Enter the caret stays in the document. Google Docs itself will still say "application" and "document content" when the cursor enters the document &mdash; that is NVDA/JAWS reading Google Docs, and the extension cannot turn it off.</p>
+      <p class="help">The extension writes the complete natural-math sentence to a live region; your screen reader speaks it. After Alt+Enter, focus returns to Linear LaTeX so the next key cannot accidentally change document text. Google Docs may briefly say "application" or "document content" while accepting the insertion.</p>
     </fieldset>
 
     <h2>Accessibility</h2>

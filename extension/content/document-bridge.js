@@ -66,22 +66,55 @@ const DocumentBridge = (() => {
 
 
 
-  async function waitForEquationInDocument(latex, beforeCount, maxMs = 6000) {
+  function captureInsertionState(latex) {
+    return {
+      text: DocsUtils.readHiddenModelText(),
+      zoneCount: DocsUtils.scanDocumentForZones().length,
+      latexCount: DocsUtils.countEquationsWithLatex(latex),
+      containsEquation: DocsUtils.documentContainsEquation(latex)
+    };
+  }
 
-    const start = Date.now();
-
-    while (Date.now() - start < maxMs) {
-
-      if (DocsUtils.documentContainsEquation(latex)) return true;
-
-      if (DocsUtils.countEquationsWithLatex(latex) > beforeCount) return true;
-
-      await sleep(200);
-
+  function hasInsertionEvidence(before, after, zoneText) {
+    if (
+      typeof InsertionVerification !== 'undefined' &&
+      InsertionVerification.insertedTextCountIncreased(
+        before.text,
+        after.text,
+        zoneText
+      )
+    ) {
+      return true;
     }
 
-    return DocsUtils.documentContainsEquation(latex);
+    return (
+      (!before.containsEquation && after.containsEquation) ||
+      after.latexCount > before.latexCount ||
+      after.zoneCount > before.zoneCount
+    );
+  }
 
+  async function waitForInsertionEvidence(
+    latex,
+    zoneText,
+    before,
+    maxMs = 6000
+  ) {
+    const start = Date.now();
+    let after = captureInsertionState(latex);
+
+    while (Date.now() - start < maxMs) {
+      if (hasInsertionEvidence(before, after, zoneText)) {
+        return { verified: true, after };
+      }
+      await sleep(200);
+      after = captureInsertionState(latex);
+    }
+
+    return {
+      verified: hasInsertionEvidence(before, after, zoneText),
+      after
+    };
   }
 
 
@@ -188,14 +221,6 @@ const DocumentBridge = (() => {
 
 
 
-    const zoneCountBefore = options.fastReturn
-      ? 0
-      : DocsUtils.scanDocumentForZones().length;
-
-    const latexCountBefore = options.fastReturn
-      ? 0
-      : DocsUtils.countEquationsWithLatex(trimmed);
-
     let insertedAs = null;
 
 
@@ -233,9 +258,16 @@ const DocumentBridge = (() => {
 
 
     const zoneText = DocsUtils.zoneText(insertText);
+    // In the accessible authoring workflow each equation occupies one line.
+    // Insert the following line break in the same editor operation so focus
+    // can leave Google Docs immediately and the next equation cannot become
+    // attached to this one's closing delimiter.
+    const safeAuthoring = options.safeAuthoring === true;
+    const documentText = safeAuthoring ? zoneText + '\n' : zoneText;
     const textBefore = DocsUtils.readHiddenModelText();
+    const stateBefore = captureInsertionState(trimmed);
 
-    const textOk = await DocsUtils.insertText(zoneText, { cursorLeft: 0 });
+    const textOk = await DocsUtils.insertText(documentText, { cursorLeft: 0 });
 
 
 
@@ -248,60 +280,44 @@ const DocumentBridge = (() => {
       };
     }
 
-
-
-    if (options.fastReturn) {
-
-      if (typeof EquationNavigator !== 'undefined') {
-        EquationNavigator.onInserted(trimmed, { skipAnnounce: true });
+    if (safeAuthoring) {
+      // Save the new empty-line caret as the next insertion target before the
+      // iframe takes focus back. Verification itself does not need focus.
+      await sleep(80);
+      DocsUtils.updateInsertPointerFromCursor();
+      if (typeof EditorPanel !== 'undefined' && EditorPanel.isVisible?.()) {
+        EditorPanel.focusInput({ selectAll: true });
       }
+    }
 
-      await prepareNextLineAfterInsert(zoneText, textBefore);
 
-      // Wait until NVDA finishes "document content, edit, blank". If we
-      // speak during that focus change, NVDA drops the math entirely.
-      await sleep(500);
-      if (typeof EquationNavigator !== 'undefined') {
-        EquationNavigator.onInserted(trimmed);
-      }
 
+    const verification = await waitForInsertionEvidence(
+      trimmed,
+      zoneText,
+      stateBefore,
+      options.fastReturn ? 1600 : 6000
+    );
+
+    if (!verification.verified) {
       return {
-
         ok: true,
-
         speech,
-
         latex: trimmed,
-
         insertedAs: 'text',
-
-        verified: true
-
+        verified: false,
+        warning:
+          'Equation entered. Google Docs did not expose it to the equation list.'
       };
-
     }
 
 
 
-    await sleep(250);
-
-    let verified = await waitForEquationInDocument(trimmed, latexCountBefore);
-
-    if (!verified) {
-
-      verified = DocsUtils.scanDocumentForZones().length > zoneCountBefore;
-
-    }
-
-    if (!verified) {
-
-      verified = DocsUtils.documentContainsEquation(trimmed);
-
-    }
-
-
-
-    if (typeof EquationNavigator !== 'undefined') {
+    if (options.fastReturn && typeof EquationNavigator !== 'undefined') {
+      // Update navigation state now, but wait to speak until Docs finishes
+      // moving focus and (at document end) creating the next line.
+      EquationNavigator.onInserted(trimmed, { skipAnnounce: true });
+    } else if (typeof EquationNavigator !== 'undefined') {
       EquationNavigator.onInserted(trimmed, {
         skipAnnounce: options.skipAnnounce === true
       });
@@ -314,7 +330,25 @@ const DocumentBridge = (() => {
       });
     }
 
-    await prepareNextLineAfterInsert(zoneText, textBefore);
+    if (!safeAuthoring) {
+      await prepareNextLineAfterInsert(zoneText, textBefore);
+    }
+
+    if (options.fastReturn) {
+      // Wait until NVDA finishes "document content, edit, blank". If we
+      // speak during that focus change, NVDA drops the math entirely.
+      await sleep(500);
+      if (typeof EquationNavigator !== 'undefined') {
+        EquationNavigator.onInserted(trimmed);
+      } else {
+        announce('', {
+          priority: 'assertive',
+          interrupt: true,
+          latex: trimmed,
+          speech
+        });
+      }
+    }
 
 
 

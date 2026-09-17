@@ -45,6 +45,29 @@ const EquationNavigator = (() => {
     return DocsUtils.listEquationsOrdered();
   }
 
+  function findEquationIndex(all, match) {
+    if (!match) return -1;
+    let idx = all.findIndex((eq) => eq === match);
+    if (idx >= 0) return idx;
+
+    if (match.lineIndex != null) {
+      idx = all.findIndex(
+        (eq) =>
+          eq.lineIndex === match.lineIndex && latexMatches(eq.latex, match.latex)
+      );
+      if (idx >= 0) return idx;
+    }
+
+    if (match.start != null) {
+      idx = all.findIndex(
+        (eq) => eq.start === match.start && latexMatches(eq.latex, match.latex)
+      );
+      if (idx >= 0) return idx;
+    }
+
+    return all.findIndex((eq) => latexMatches(eq.latex, match.latex));
+  }
+
   function syncNavToCursor() {
     const all = getEquationList();
     if (!all.length) {
@@ -54,7 +77,7 @@ const EquationNavigator = (() => {
     const onLine = DocsUtils.findEquationOnCursorLineFromList(all);
     const match = onLine || DocsUtils.findEquationForCursor();
     if (match) {
-      const idx = all.findIndex((eq) => latexMatches(eq.latex, match.latex));
+      const idx = findEquationIndex(all, match);
       if (idx >= 0) navIndex = idx;
       return all[navIndex];
     }
@@ -204,9 +227,7 @@ const EquationNavigator = (() => {
         return;
       }
 
-      const idx = all.findIndex(
-        (item) => item === eq || latexMatches(item.latex, eq.latex)
-      );
+      const idx = findEquationIndex(all, eq);
       if (idx >= 0) navIndex = idx;
       announceEquationEntry(idx >= 0 ? all[idx] : eq);
     }, 40);

@@ -134,15 +134,31 @@
         return { ok: false, error: 'Open a Google Doc (desktop /edit URL) first.' };
       }
       return new Promise((resolve) => {
+        let settled = false;
+        let timeoutId = null;
+        const finish = (result) => {
+          if (settled) return;
+          settled = true;
+          if (timeoutId) clearTimeout(timeoutId);
+          resolve(result);
+        };
+        timeoutId = setTimeout(() => {
+          finish({
+            ok: false,
+            error:
+              'Google Docs did not respond. Check the document before trying again.'
+          });
+        }, 12000);
+
         chrome.tabs.sendMessage(tab.id, { action, ...payload }, (response) => {
           if (chrome.runtime.lastError) {
-            resolve({
+            finish({
               ok: false,
               error: 'Reload the Google Doc tab, then try again.'
             });
             return;
           }
-          resolve(response || { ok: false, error: 'No response from document.' });
+          finish(response || { ok: false, error: 'No response from document.' });
         });
       });
     });
@@ -245,20 +261,54 @@
     const replacing = currentMode === 'edit' && !newLine;
     setStatus(replacing ? 'Replacing...' : 'Inserting...');
 
-    const result = await sendToDoc('insertLatex', {
-      latex: rawLatex,
-      replace: replacing,
-      newLine,
-      skipImage: true,
-      skipAnnounce: true,
-      fastReturn: true
-    });
+    let result;
+    try {
+      result = await sendToDoc('insertLatex', {
+        latex: rawLatex,
+        replace: replacing,
+        newLine,
+        safeAuthoring: !replacing,
+        skipImage: true,
+        skipAnnounce: true,
+        fastReturn: true
+      });
+    } catch (err) {
+      result = {
+        ok: false,
+        error: String(err?.message || err || 'Insert failed.')
+      };
+    }
+
+    // Google Docs must receive focus briefly to accept the insertion. Always
+    // take it back before reporting the result so the student's next key
+    // cannot alter or delete document text. Selecting the completed source
+    // also makes typing the next equation replace it instead of appending.
+    focusLatexInput(currentMode);
+    if (result?.ok && !replacing) {
+      latexInput.select();
+    }
 
     if (!result?.ok) {
       announceToUser(result?.error || 'Insert failed.', {
         priority: 'assertive',
         statusClass: 'error'
       });
+      return;
+    }
+
+    if (result.verified === false) {
+      const warning =
+        result.warning ||
+        'Equation entered. Google Docs did not expose it to the equation list.';
+      announceToUser(
+        warning,
+        {
+          priority: 'assertive',
+          statusClass: 'ok',
+          latex: rawLatex.trim(),
+          speech: `${warning} ${speech}`
+        }
+      );
       return;
     }
 
@@ -423,6 +473,7 @@
     }
     if (event.data?.type === 'LATEX_GDOCS_FOCUS_INPUT') {
       focusLatexInput('edit');
+      if (event.data.selectAll === true) latexInput.select();
     }
   });
 
@@ -506,7 +557,7 @@
   });
 
   document.getElementById('btn-insert').addEventListener('click', insertEquation);
-  document.getElementById('btn-close-panel').addEventListener('click', closePanel);
+  document.getElementById('btn-close-panel')?.addEventListener('click', closePanel);
   document.getElementById('btn-clear').addEventListener('click', () => {
     latexInput.value = '';
     updatePreview();

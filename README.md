@@ -49,11 +49,11 @@ Everything below works from the document unless noted.
 
 ### Where the equation lands
 
-**Alt+Enter** inserts exactly at the cursor and nothing else. If the cursor sits on a blank line, the equation fills that line. If it sits in the middle of a sentence, you get inline math without the sentence being split.
+**Alt+Enter** inserts a standalone equation at the cursor and starts the next empty line. Focus immediately returns to Linear LaTeX, with the completed source selected, so typing starts the next equation instead of changing the Google Doc.
 
 **Alt+Shift+Enter** starts a fresh line below the current one and puts the equation there. This is how you add an equation *between* two existing lines without having to leave the panel and press Enter in the document first.
 
-When you insert at the very end of the document, the cursor is left on a new empty line so you can keep adding equations one after another. That only happens at the end of the document, where no line break follows — inserting anywhere else leaves the surrounding lines untouched.
+The extension intentionally uses one equation per line. This simpler block-equation workflow is safer for screen-reader users and keeps consecutive equations from running together.
 
 ### Navigating and editing
 
@@ -65,12 +65,12 @@ Delete and replace both verify the document before and after the edit. If the re
 
 ### Speech and screen readers
 
-This is one product, not a separate NVDA build and JAWS build. After **Alt+Enter** the caret stays in the Google Doc, not in Linear LaTeX.
+This is one product, not a separate NVDA build and JAWS build. After **Alt+Enter**, focus returns to Linear LaTeX so an accidental keystroke cannot alter or delete document text. Press **Alt+D** or close the panel when you intentionally want to navigate the document.
 
 Speech is a setting with two channels — never both at once:
 
 - **Chrome speech** — the original engine (`chrome.tts`). Speaks the math without bouncing focus. This is the voice that worked before screen readers were in the mix.
-- **My screen reader** — announcements include **MathML** (from KaTeX) so NVDA/JAWS MathCAT can speak the math instead of raw LaTeX. The professional preview in the editor is also MathML, not an image with an English label. Chrome speech mode still uses the extension's English voice.
+- **My screen reader** — automatic announcements use the extension's complete natural-math sentence. This is more dependable than asking NVDA/JAWS to enter MathML while focus is moving between the editor and Google Docs. The professional preview remains MathML so it can be explored directly. Chrome speech mode uses the same English reading through the extension's voice.
 
 Google Docs itself will still say things like "application" and "document content" when the cursor enters the document, and it will still read `[[eq]]…[[/eq]]` in the document body. That is the screen reader reading Google Docs' text, which this extension cannot replace with MathML.
 
@@ -88,7 +88,9 @@ If something misbehaves, press **Ctrl+Shift+F9**. It copies a diagnostic report 
 
 ## Testing
 
-**Speech conversion:** open `extension/test/latex-speech.test.html` in Chrome. It checks the LaTeX-to-speech converter against the practice curriculum equations and reports pass/fail — no build step or server needed. If you have Node installed, the same cases run with `node extension/test/latex-speech.test.js`.
+**Speech conversion:** open `extension/test/latex-speech.test.html` in Chrome. It checks the LaTeX-to-speech converter against the practice curriculum equations and reports pass/fail — no build step or server needed. If you have Node installed, run `node extension/test/latex-speech.test.js`, `node extension/test/speech-output.test.js`, `node extension/test/zone-scan.test.js`, `node extension/test/insertion-verification.test.js`, and `node extension/test/document-bridge.test.js`.
+
+The extension reports **Inserted** only after Google Docs exposes evidence of the new equation. In canvas documents it may instead say that Google Docs accepted the command but did not expose the equation to the extension list. The entered math is still read, and focus remains safely in Linear LaTeX.
 
 **Self-test as a blind student:** [docs/blind-student-test.md](docs/blind-student-test.md) is a keyboard-only script that takes about 15 minutes with **NVDA or JAWS on Windows**, or **VoiceOver on Mac**. Windows users can install NVDA from [nvaccess.org/download](https://www.nvaccess.org/download/).
 

@@ -1,143 +1,93 @@
-# Acceptance Test — Screen Reader (v2.1)
+# Extension acceptance test — NVDA, JAWS, and Narrator (v2.11.4)
 
-Formal acceptance matrix for the LaTeX-for-Google-Docs extension. For a guided walkthrough, see **[blind-student-test.md](./blind-student-test.md)**.
+This is the short release test for the Google Docs extension. Run the same
+steps with one screen reader at a time. Record behavior, not exact wording;
+screen readers use different control names and verbosity.
 
-## Prerequisites
+For the longer student walkthrough, see
+[blind-student-test.md](./blind-student-test.md).
 
-1. **Google Chrome** on **Windows or Mac** (desktop `/edit` URL).
-2. Chrome extension **v2.1.0+** loaded from `extension/` (reload after code changes).
-3. Screen reader running:
-   - **Windows:** [NVDA](https://www.nvaccess.org/download/) (`winget install --id NVAccess.NVDA -e`)
-   - **Mac:** **VoiceOver** (**Cmd+F5**)
-4. Google Doc open at a URL ending in `/edit`.
-5. Cursor in document body.
-6. Accessibility options enabled (defaults): keystroke announce, preview speech, equation navigation.
+## Set up each run
 
-> **Not ChromeVox:** Full ChromeVox is ChromeOS-only. The deprecated Chrome extension is unreliable on Windows — use NVDA or VoiceOver instead.
+1. Reload version **2.11.4** at `chrome://extensions`, then refresh the Doc.
+2. Use current Chrome on Windows and a document URL ending in `/edit`.
+3. In Docs, turn on **Tools → Accessibility → Screen reader support**.
+4. In the extension options, select **My screen reader**.
+5. Run only one reader:
+   - **NVDA:** use focus mode (`NVDA+Space`) while editing.
+   - **JAWS:** turn off the Virtual PC Cursor (`JAWS+Z`) while editing.
+   - **Narrator:** turn off scan mode (`Narrator+Space`) while editing.
+6. Start with a new document containing these three lines:
 
-## Test equation
+   ```text
+   Before
+   Middle
+   After
+   ```
 
-`y=\sqrt{x + 3}`
+Google Docs may say “application,” “document content,” “edit,” and the literal
+`[[eq]]` source. That noise is a known platform limitation. It is not a failure
+unless it prevents the extension's math announcement or the requested action.
 
-Expected natural speech: *"y equals the square root of x plus 3"*
+## Core test
 
----
+| # | Action | Pass condition |
+|---|---|---|
+| 1 | Put the caret after **Before** and press **Alt+=** | Focus lands in **Linear LaTeX** without a mouse and without a long help announcement. |
+| 2 | Type `y=\sqrt{x + 3}` | Native character/word echo occurs once. No second synthetic voice speaks over the reader. |
+| 3 | Press **Alt+Enter** | The equation is on its own line, the next line is ready, and focus is back in **Linear LaTeX** with the source selected. Hear the complete sentence **“y equals the square root of x plus 3”** once—not a fragment such as “right bracket.” Typing a letter now changes the selected LaTeX, never the document. |
+| 4 | Press **Escape**, then arrow away and back | The caret moves normally and the extension announces the corresponding natural math once. Docs may additionally expose the literal source. |
+| 5 | Press **Ctrl+Shift+R** | The current equation is spoken once and focus remains usable. |
+| 6 | Press **F2**, change `3` to `5`, then **Alt+Enter** | Only that equation changes, in place, and the replacement is announced. |
+| 7 | Press **Ctrl+Shift+Delete** | Only that equation is removed. A failed safety check must leave the document unchanged and explain the failure. |
 
-## Step 1 — Extension ready
+## Placement and duplicate-equation regression
 
-| # | Action | You should hear… |
-|---|--------|------------------|
-| 1.1 | Refresh Google Doc tab | *"LaTeX for Google Docs ready… Alt equals… Control Shift R…"* |
+| # | Action | Pass condition |
+|---|---|---|
+| 8 | On the **Middle** line, insert `x^2` with **Alt+Shift+Enter** | A new equation line appears immediately below Middle; After remains intact. |
+| 9 | At the end of the document, insert `x^2` twice with **Alt+Enter** | Both identical equations exist on separate consecutive lines with no blank line between them. |
+| 10 | Arrow to the second `x^2`, press **F2**, change it to `x^3`, and commit | The first remains `x^2`; only the second becomes `x^3`. |
+| 11 | Delete the remaining `x^2` with **Ctrl+Shift+Delete** | `x^2` is removed and `x^3` remains. The existence of another similar equation does not trigger an undo. |
+| 12 | Refresh the panel equation list | Its order and count match the document. Selecting an item loads that exact equation. |
 
-**Pass:** Ready announcement on load.
+## Failure and uncertainty behavior
 
----
+If the extension says:
 
-## Step 2 — Open equation editor (Alt+=)
+> Equation entered. Google Docs did not expose it to the equation list.
 
-| # | Action | You should hear… |
-|---|--------|------------------|
-| 2.1 | Focus document body | Editable text region |
-| 2.2 | Press **Alt+=** | *"Equation editor ready. Linear mode…"* |
-| 2.3 | Verify focus | **Linear LaTeX** text field |
+mark the list/navigation result as **Unconfirmed**. The editor accepted the
+command, but its canvas did not provide readable text for the extension list.
+The extension should still read the entered math once and keep focus in Linear
+LaTeX; it must not ask a blind student to inspect the page visually.
 
-**Pass:** Editor opens without using Google Docs native equation menu.
+## Reader scorecard
 
----
+Use **Pass**, **Fail**, or **Unconfirmed**. Add a short speech-history excerpt
+for failures.
 
-## Step 3 — Linear mode LaTeX typing
+| Check | NVDA | JAWS | Narrator |
+|---|---|---|---|
+| Alt+= reliably focuses Linear LaTeX |  |  |  |
+| Typing has one voice |  |  |  |
+| Insert is confirmed and math is heard once |  |  |  |
+| Arrow navigation announces the correct equation |  |  |  |
+| Ctrl+Shift+R works |  |  |  |
+| F2 replaces the correct equation |  |  |  |
+| Delete removes the correct equation |  |  |  |
+| Repeated formulas behave correctly |  |  |  |
+| No focus trap or unrecoverable silence |  |  |  |
+| Overall usable despite Docs' own speech |  |  |  |
 
-| # | Action | You should hear… |
-|---|--------|------------------|
-| 3.1 | Type `y` | *"y"* |
-| 3.2 | Type `=` | *"equals"* |
-| 3.3 | Type `\sqrt{x + 3}` | LaTeX keystrokes |
-| 3.4 | **Read aloud** (optional) | Natural math speech |
-| 3.5 | **Alt+Enter** after clicking in document | *"Equation inserted. y equals the square root of x plus 3"* |
+Recommend a reader only after it passes every action and a blind tester judges
+the remaining Docs chatter usable. A reader being quieter is not enough if its
+caret, editing, or equation announcements are unreliable.
 
-**Pass:** Linear keystrokes; natural math speech only on Insert or Read aloud.
+## What to report
 
----
-
-## Step 4 — Insert into document (Alt+Enter)
-
-| # | Action | You should hear… |
-|---|--------|------------------|
-| 4.1 | Click in document at insert point | — |
-| 4.2 | Press **Alt+Enter** in panel | *"Inserting at cursor…"* then *"Equation inserted. y equals…"* |
-| 4.3 | Document | Equation stored (LaTeX source with ⟦eq⟧ markers) |
-
-**Pass:** Natural math speech on insert; equation present in document.
-
-**Note:** **Ctrl+Enter** is intentionally blocked (Google Docs page break).
-
----
-
-## Step 5 — Navigate equation in document
-
-| # | Action | You should hear… |
-|---|--------|------------------|
-| 5.1 | Arrow onto inserted equation | *"Equation: y equals the square root of x plus 3"* |
-| 5.2 | **Ctrl+Shift+R** on equation | Same natural speech |
-
-**Pass:** Natural math when navigating — not raw LaTeX delimiters.
-
----
-
-## Step 6 — Edit equation (F2)
-
-| # | Action | You should hear… |
-|---|--------|------------------|
-| 6.1 | Cursor near equation | — |
-| 6.2 | Press **F2** | *"Editing equation…"* + natural speech |
-| 6.3 | Change `3` to `5` | Keystroke *"5"* |
-| 6.4 | **Alt+Enter** after placing cursor | Updated speech with *"x plus 5"* |
-
-**Pass:** F2 loads nearest equation into panel.
-
----
-
-## Step 7 — Equation list
-
-| # | Action | You should hear… |
-|---|--------|------------------|
-| 7.1 | **Refresh list** | Equations listed with natural speech labels |
-| 7.2 | Select equation | *"Loaded equation N for editing"* |
-
-**Pass:** Document equations discoverable from panel.
-
----
-
-## Step 8 — Practice template
-
-| # | Action | You should hear… |
-|---|--------|------------------|
-| 8.1 | Tutorial 3 → Acceptance test | Template loads |
-| 8.2 | **Alt+Enter** | Equation inserted |
-
-**Pass:** Templates work for classroom worksheets.
-
----
-
-## Known differences from Word
-
-| Word | Google Docs v2.1 |
-|------|------------------|
-| Type inline in document | Type in side panel (linear mode) |
-| Enter commits | **Alt+Enter** inserts |
-| Rendered math in document | LaTeX source + speech |
-| F2 inline edit | F2 loads into panel |
-| Arrow through math | Arrow + Ctrl+Shift+R |
-
----
-
-## Failures to report
-
-- Side panel does not open on Alt+=
-- Keystrokes not announced in panel
-- Speech while typing (should only hear keystrokes in linear mode)
-- Alt+Enter does not insert
-- Arrow navigation does not announce equations
-- Ctrl+Shift+R silent
-- F2 does not load nearest equation
-- Screen reader silent on **Read aloud**
+- Reader name and version; Chrome version.
+- Test number and whether it was Pass, Fail, or Unconfirmed.
+- What was spoken and where the caret actually landed.
+- For caret, list, replace, or delete failures, press **Ctrl+Shift+F9** and
+  include the copied diagnostic report.

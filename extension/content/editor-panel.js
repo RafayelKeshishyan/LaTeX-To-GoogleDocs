@@ -29,6 +29,7 @@ const EditorPanel = (() => {
 
     const title = document.createElement('span');
     title.textContent = 'LaTeX Equation Editor';
+    title.setAttribute('aria-hidden', 'true');
     title.style.cssText = 'font:600 14px system-ui,sans-serif;color:#202124;';
 
     const closeBtn = document.createElement('button');
@@ -36,6 +37,7 @@ const EditorPanel = (() => {
     closeBtn.id = 'latex-gdocs-panel-close';
     closeBtn.textContent = 'Close';
     closeBtn.setAttribute('aria-label', 'Close equation editor');
+    closeBtn.setAttribute('tabindex', '-1');
     closeBtn.style.cssText =
       'padding:6px 12px;border:1px solid #dadce0;border-radius:4px;background:#fff;' +
       'font:500 13px system-ui,sans-serif;cursor:pointer;position:relative;z-index:3;pointer-events:auto;';
@@ -52,7 +54,6 @@ const EditorPanel = (() => {
     closeBtn.addEventListener('mousedown', handleClose, true);
     closeBtn.addEventListener('click', handleClose, true);
 
-    header.setAttribute('aria-hidden', 'true');
     header.appendChild(title);
     header.appendChild(closeBtn);
 
@@ -118,7 +119,7 @@ const EditorPanel = (() => {
     const host = ensureHost();
     host.hidden = false;
     host.style.display = 'flex';
-    host.setAttribute('aria-hidden', 'false');
+    host.removeAttribute('aria-hidden');
     pushStateToFrame(panelState);
     setTimeout(() => focusInput(), 80);
 
@@ -128,10 +129,21 @@ const EditorPanel = (() => {
   function hide() {
     const host = document.getElementById(HOST_ID);
     if (!host) return;
+
+    // Move focus out before hiding the panel. Hiding an ancestor while a
+    // descendant retains focus triggers Chrome's blocked-aria-hidden error
+    // and leaves assistive technology pointing at an unavailable control.
+    const frame = document.getElementById(FRAME_ID);
+    frame?.contentWindow?.postMessage({ type: 'LATEX_GDOCS_BLUR_INPUT' }, '*');
+    try {
+      frame?.blur();
+    } catch {
+      /* ignore */
+    }
+    DocsUtils.focusEditor();
     host.hidden = true;
     host.style.display = 'none';
-    host.setAttribute('aria-hidden', 'true');
-    DocsUtils.focusEditor();
+    host.removeAttribute('aria-hidden');
   }
 
   function isVisible() {
@@ -139,16 +151,23 @@ const EditorPanel = (() => {
     return Boolean(host && !host.hidden);
   }
 
-  function focusInput() {
+  function focusInput(options = {}) {
     const frame = document.getElementById(FRAME_ID);
     if (!frame || !isVisible()) return false;
     try {
       const input = frame.contentDocument?.getElementById('latex-input');
       if (input) {
         input.focus();
+        if (options.selectAll === true) input.select();
         return true;
       }
-      frame.contentWindow?.postMessage({ type: 'LATEX_GDOCS_FOCUS_INPUT' }, '*');
+      frame.contentWindow?.postMessage(
+        {
+          type: 'LATEX_GDOCS_FOCUS_INPUT',
+          selectAll: options.selectAll === true
+        },
+        '*'
+      );
       return true;
     } catch {
       return false;

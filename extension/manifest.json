@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LaTeX for Google Docs",
-  "version": "2.11.0",
+  "version": "2.11.4",
   "description": "Accessible LaTeX equation editor for Google Docs with keyboard and screen reader support.",
   "permissions": [
     "storage",
@@ -34,6 +34,7 @@
       ],
       "js": [
         "content/extension-context.js",
+        "lib/insertion-verification.js",
         "content/docs-utils.js",
         "lib/katex/katex.min.js",
         "lib/latex-speech.js",
@@ -91,6 +92,7 @@
         "lib/katex/fonts/*",
         "lib/latex-speech.js",
         "lib/latex-mathml.js",
+        "lib/insertion-verification.js",
         "lib/speech-output.js"
       ],
       "matches": ["https://docs.google.com/*"]

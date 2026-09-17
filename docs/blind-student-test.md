@@ -2,7 +2,7 @@
 
 Use this script to test the extension **as a blind student would** — keyboard only, eyes closed or monitor off, letting your screen reader speak everything.
 
-**Extension version:** 2.9.1+  
+**Extension version:** 2.11.4+
 **Time:** ~15 minutes  
 **Test equation:** `y=\sqrt{x + 3}`  
 **Expected natural speech:** *"y equals the square root of x plus 3"*
@@ -79,7 +79,7 @@ The extension no longer dumps a help speech on load. After refresh you should he
 | B.4 | Type `=` | *"equals"* |
 | B.5 | Type `\sqrt{x + 3}` | LaTeX keystrokes: *"backslash"*, *"s"*, etc. |
 | B.6 | Activate **Read aloud** (optional) | *"y equals the square root of x plus 3"* — only when you ask for it |
-| B.7 | Press **Alt+Enter** | *"y equals the square root of x plus 3"* — once. If this insert was at the **end** of the document, a new blank line is created below the equation. |
+| B.7 | Press **Alt+Enter** | *"y equals the square root of x plus 3"* — once. Focus returns to Linear LaTeX with the completed source selected; the document has the equation followed by a new line. |
 | B.8 | Press **Escape** to close the panel | Panel closes, focus returns to the document |
 
 The equation is now stored in the document as `[[eq]]y=\sqrt{x + 3}[[/eq]]`. Put it on its own line — delete and replace both require the equation to be the only thing on its line.
@@ -150,7 +150,7 @@ You should hear *"Equation inserted on a new line."* The equation goes on a bran
 
 Each equation should land on its own line, one after the other, with no blank lines between them. This is the flow that the trailing newline exists for, and it should be unchanged.
 
-**F.4 — Inline math.** Put the caret in the middle of a sentence and insert with **Alt+Enter**. The sentence should stay on one line with the equation embedded in it, not be split in two.
+**F.4 — Safe focus.** After **Alt+Enter**, type one letter without changing focus. It must replace the selected LaTeX in the panel and must not appear in the Google Doc. Use **Alt+D** only when you intentionally want to return to document navigation.
 
 ---
 
@@ -185,6 +185,7 @@ Each equation should land on its own line, one after the other, with no blank li
 | Inserting at the end still leaves a fresh line for the next equation | ☐ |
 | Inserting mid-sentence does not split the sentence | ☐ |
 | Insert success and failure both announced clearly | ☐ |
+| An unconfirmed insert says to check the document and does **not** claim “Inserted” | ☐ |
 
 ---
 
