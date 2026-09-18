@@ -45,7 +45,7 @@ Everything below works from the document unless noted.
 | Delete the equation at the cursor | **Ctrl+Shift+Delete** |
 | Copy a diagnostic report to the clipboard | **Ctrl+Shift+F9** |
 
-With version 2.12.3, press **Alt+=** while the cursor is in Google Docs to focus the already-open **Accessible Equation Editor** Apps Script sidebar. Open the add-on sidebar once from the Extensions menu first. Alt+= is handled directly in the Docs page and F2 remains an optional fallback.
+With version 2.12.4, press **Alt+=** while the cursor is in Google Docs to focus the already-open **Accessible Equation Editor** Apps Script sidebar. Open the add-on sidebar once from the Extensions menu first. Alt+= is captured in Google Docs' main editing context and relayed to the add-on; F2 remains an optional fallback.
 
 ### Where the equation lands
 

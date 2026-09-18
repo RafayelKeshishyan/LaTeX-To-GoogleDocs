@@ -37,6 +37,51 @@
     return iframe.contentDocument;
   }
 
+  const hotkeyTargets = new WeakSet();
+
+  function relayAccessibleAddonHotkey(event) {
+    const isAltEquals =
+      event.altKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      (event.key === '=' || event.code === 'Equal');
+    const isF2 = event.key === 'F2' && !event.ctrlKey && !event.altKey;
+    if (!isAltEquals && !isF2) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === 'function') {
+      event.stopImmediatePropagation();
+    }
+    window.postMessage({ type: 'LATEX_GDOCS_ACCESSIBLE_ADDON_HOTKEY' }, '*');
+  }
+
+  function attachAccessibleAddonHotkeys() {
+    function attach(target) {
+      if (!target || hotkeyTargets.has(target)) return;
+      target.addEventListener('keydown', relayAccessibleAddonHotkey, true);
+      hotkeyTargets.add(target);
+    }
+    attach(window);
+    const frame = querySelectorDeep(TEXT_EVENT_SELECTORS);
+    try {
+      attach(frame && frame.contentWindow);
+      attach(frame && frame.contentDocument);
+    } catch {
+      /* The top-window listener remains available. */
+    }
+  }
+
+  attachAccessibleAddonHotkeys();
+  const hotkeyObserver = new MutationObserver(attachAccessibleAddonHotkeys);
+  if (document.documentElement) {
+    hotkeyObserver.observe(document.documentElement, { childList: true, subtree: true });
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      attachAccessibleAddonHotkeys();
+      hotkeyObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }, { once: true });
+  }
+
   function isDocumentActive() {
     return Boolean(
       document.querySelector('.docs-text-ui-cursor-blink') ||

@@ -22,6 +22,7 @@
   }
 
   function requestAccessibleAddonFocus() {
+    if (addonFocusRequestId) return true;
     const requestId = `accessible-addon-${Date.now()}-${Math.random()}`;
     addonFocusRequestId = requestId;
     const frames = Array.from(document.querySelectorAll('iframe')).filter(
@@ -186,6 +187,13 @@
     DocsUtils.attachKeyListeners(onKeyDown, true);
     window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('message', (event) => {
+      if (
+        event.source === window &&
+        event.data?.type === 'LATEX_GDOCS_ACCESSIBLE_ADDON_HOTKEY'
+      ) {
+        requestAccessibleAddonFocus();
+        return;
+      }
       if (
         event.data?.type === 'ACCESSIBLE_EQUATIONS_FOCUS_READY' &&
         event.data.requestId === addonFocusRequestId
