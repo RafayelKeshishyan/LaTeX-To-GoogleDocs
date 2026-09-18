@@ -37,7 +37,7 @@
       if (addonFocusRequestId !== requestId) return;
       addonFocusRequestId = null;
       DocumentBridge.announce(
-        'Accessible Equation Editor is not open. Open it once from the Extensions menu, then use Alt Shift E.'
+        'Accessible Equation Editor is not open. Open it once from the Extensions menu, then use Control Shift 9.'
       );
     }, 700);
     return frames.length > 0;

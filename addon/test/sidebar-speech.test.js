@@ -54,6 +54,8 @@ assert.match(html, /ACCESSIBLE_EQUATIONS_FOCUS_READY/);
 assert.match(html, /ACCESSIBLE_EQUATIONS_FOCUS_INPUT/);
 assert.match(html, /function focusEditorForDocumentCursor\(\)/);
 assert.match(html, /New equation mode\./);
+assert.match(html, /Linear LaTeX\. Editing equation:/);
+assert.match(html, /The LaTeX is selected and ready to edit\./);
 assert.match(html, /dataset\.selectedAction === 'edit'/);
 assert.match(html, /dataset\.selectedAction === 'delete'/);
 

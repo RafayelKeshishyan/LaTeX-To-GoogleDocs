@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LaTeX for Google Docs",
-  "version": "2.12.0",
+  "version": "2.12.1",
   "description": "Accessible LaTeX equation editor for Google Docs with keyboard and screen reader support.",
   "permissions": [
     "storage",
@@ -69,9 +69,10 @@
   "commands": {
     "insert-equation": {
       "suggested_key": {
-        "default": "Alt+Shift+E"
+        "default": "Ctrl+Shift+9"
       },
-      "description": "Focus the Accessible Equation Editor sidebar"
+      "description": "Focus the Accessible Equation Editor sidebar",
+      "global": true
     },
     "read-equation": {
       "suggested_key": {

@@ -116,6 +116,7 @@
 
     <label for="latex-input">Linear LaTeX</label>
     <textarea id="latex-input" spellcheck="false" aria-describedby="input-help"
+      aria-label="Linear LaTeX. New equation."
       placeholder="Example: y=\sqrt{x + 3}"></textarea>
     <p id="input-help" class="hint">Press Alt+Enter to insert. Enter alone starts a new line.</p>
 
@@ -487,6 +488,7 @@
     function stopEditing(clearInput) {
       editingIndex = null;
       editingTarget = null;
+      latexInput.setAttribute('aria-label', 'Linear LaTeX. New equation.');
       insertButton.textContent = 'Insert at cursor';
       cancelEditButton.hidden = true;
       newLineAfter.disabled = false;
@@ -501,11 +503,14 @@
       editingIndex = equation.index;
       editingTarget = equation.target || null;
       latexInput.value = equation.latex || '';
+      latexInput.setAttribute('aria-label',
+        'Linear LaTeX. Editing equation: ' + equation.speech + '.');
       updatePreview();
       insertButton.textContent = 'Replace equation';
       cancelEditButton.hidden = false;
       newLineAfter.disabled = true;
-      setStatus('Editing equation ' + (equation.index + 1) + ': ' + equation.speech);
+      setStatus('Editing equation ' + (equation.index + 1) + ': ' + equation.speech +
+        '. The LaTeX is selected and ready to edit.');
       latexInput.focus();
       latexInput.select();
     }
