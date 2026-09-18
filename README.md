@@ -33,19 +33,19 @@ Everything below works from the document unless noted.
 
 | Action | Keys |
 |--------|------|
-| Open the equation editor | **Alt+=** |
+| Focus the add-on and edit the equation beside the cursor | **Alt+=** |
 | Open the editor (fallback if Alt+= is taken) | **Ctrl+Alt+M** |
 | Insert the equation at the cursor | **Alt+Enter** (in the panel) |
 | Insert on a new line below the cursor | **Alt+Shift+Enter** (in the panel) |
 | Return to the document from the panel | **Alt+D** |
 | Close the panel | **Escape** |
 | Move a line and read any equation on it | **Up** / **Down** |
-| Focus the add-on and edit the equation beside the cursor | **F2** |
+| Optional fallback for focusing the add-on | **F2** |
 | Read the equation at the cursor aloud | **Ctrl+Shift+R** |
 | Delete the equation at the cursor | **Ctrl+Shift+Delete** |
 | Copy a diagnostic report to the clipboard | **Ctrl+Shift+F9** |
 
-With version 2.12.2, press **F2** while the cursor is in Google Docs to focus the already-open **Accessible Equation Editor** Apps Script sidebar. Open the add-on sidebar once from the Extensions menu first. F2 is handled directly in the Docs page, avoiding Chrome and Google Docs shortcut conflicts.
+With version 2.12.3, press **Alt+=** while the cursor is in Google Docs to focus the already-open **Accessible Equation Editor** Apps Script sidebar. Open the add-on sidebar once from the Extensions menu first. Alt+= is handled directly in the Docs page and F2 remains an optional fallback.
 
 ### Where the equation lands
 

@@ -104,22 +104,7 @@
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      const hadClick =
-        window.__latexGdocsLastPointer &&
-        Date.now() - window.__latexGdocsLastPointer.t < 30 * 60 * 1000;
-      if (!hadClick) {
-        window.__latexGdocsLastPointer = null;
-      }
-      editTarget = null;
-      if (EditorPanel.isVisible()) {
-        const frame = document.getElementById(FRAME_ID);
-        frame?.contentWindow?.postMessage({ type: 'LATEX_GDOCS_NEW_EQUATION' }, '*');
-        EquationNavigator.setComposingNew(true);
-        openEditorPanel('new', { focusEditor: true });
-      } else {
-        EquationNavigator.setComposingNew(true);
-        openEditorPanel('new');
-      }
+      requestAccessibleAddonFocus();
       return false;
     }
 
