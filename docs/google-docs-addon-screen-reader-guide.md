@@ -8,6 +8,8 @@ Use the latest Chrome and the latest available NVDA or JAWS. In Google Docs, tur
 
 The sidebar heading must be **Accessible Equation Editor**. A sidebar headed **LaTeX Equation Editor** is the older Chrome extension and should not be used for the image workflow.
 
+Open **Accessible Equation Editor** once and leave it open for the entire assignment. On Windows, `Ctrl+Alt+Period` moves forward through the Docs landmarks, including the side panel, and `Ctrl+Alt+Comma` moves in reverse. The sidebar's **Return to document** button moves focus directly back to the Docs editing area.
+
 ## Student workflow
 
 ### Read the assignment
@@ -34,7 +36,7 @@ An equation created by the add-on is an inline image. The screen reader should a
 ### Edit an answer
 
 1. Navigate to and select the equation image in the Google Docs document.
-2. Use **Extensions → Accessible Equations for Google Docs → Edit selected equation**.
+2. Move to the already-open sidebar and activate **Edit selected equation from document**. The Extensions menu command is only a fallback when the sidebar is closed.
 3. Edit the loaded LaTeX in the sidebar.
 4. Activate **Replace equation**.
 
@@ -43,7 +45,7 @@ The replacement stays in the selected image’s document position. If another co
 ### Delete an answer
 
 1. Select the equation image in Google Docs.
-2. Use **Extensions → Accessible Equations for Google Docs → Delete selected equation...**. If the sidebar is already open, **Delete selected equation from document** does the same job.
+2. Move to the already-open sidebar and activate **Delete selected equation from document**. The Extensions menu command is only a fallback when the sidebar is closed.
 3. Listen to the equation wording in the confirmation message.
 4. Activate **Confirm delete selected equation**.
 

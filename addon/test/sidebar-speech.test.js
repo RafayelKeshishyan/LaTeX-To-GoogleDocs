@@ -47,6 +47,8 @@ assert.match(html, />\s*Edit selected equation from document\s*</);
 assert.match(html, />\s*Delete selected equation from document\s*</);
 assert.match(html, /id="new-line-after" type="checkbox" checked/);
 assert.match(html, /mhchem\.min\.js/);
+assert.match(html, />\s*Return to document\s*</);
+assert.match(html, /google\.script\.host\.editor\.focus\(\)/);
 assert.match(html, /dataset\.selectedAction === 'edit'/);
 assert.match(html, /dataset\.selectedAction === 'delete'/);
 

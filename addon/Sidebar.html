@@ -109,6 +109,10 @@
   <main>
     <h1>Accessible Equation Editor</h1>
     <p class="subtitle">Type LaTeX, then insert an equation image with spoken alt text.</p>
+    <p class="hint"><strong>Keep this sidebar open while you work.</strong> On Windows, use Ctrl+Alt+Period or Ctrl+Alt+Comma to move between the Google Doc and this side panel.</p>
+    <button class="secondary template-button" id="return-to-document-button" type="button">
+      Return to document
+    </button>
 
     <label for="latex-input">Linear LaTeX</label>
     <textarea id="latex-input" spellcheck="false" aria-describedby="input-help"
@@ -177,6 +181,7 @@
     const readButton = document.getElementById('read-button');
     const clearButton = document.getElementById('clear-button');
     const cancelEditButton = document.getElementById('cancel-edit-button');
+    const returnToDocumentButton = document.getElementById('return-to-document-button');
     const newLineAfter = document.getElementById('new-line-after');
     const refreshButton = document.getElementById('refresh-button');
     const editSelectedButton = document.getElementById('edit-selected-button');
@@ -665,6 +670,10 @@
       stopEditing(false);
       setStatus('Editing canceled.');
       latexInput.focus();
+    });
+    returnToDocumentButton.addEventListener('click', function () {
+      setStatus('Returning to the Google Docs editing area.');
+      google.script.host.editor.focus();
     });
     refreshButton.addEventListener('click', refreshEquations);
     editSelectedButton.addEventListener('click', loadSelectedEquation);

@@ -18,6 +18,7 @@ For example, `y=x^2` is inserted as a visual equation whose alt description is â
 - The placement checkbox also supports inline answers inside teacher-created blanks.
 - Equations inserted by the add-on can be loaded, replaced in place, or deleted from the sidebar.
 - A student can select an equation while reading the document and use the dedicated **Edit selected equation** or **Delete selected equation...** menu command for that exact image.
+- The sidebar can remain open for the entire assignment. **Return to document** moves focus back to Docs, and the Docs side-panel landmark shortcut returns to the open sidebar without reopening the Extensions menu.
 - Selected-image deletion uses a two-step confirmation, and replacement verifies the image identity before changing the document.
 - Original LaTeX is stored in document properties so it can be edited later.
 - KaTeX `\ce{...}` formulas and expanded Algebra 2, introductory calculus, physics, and chemistry speech are supported for basic classroom notation.
