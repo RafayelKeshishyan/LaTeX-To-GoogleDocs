@@ -37,7 +37,7 @@
       if (addonFocusRequestId !== requestId) return;
       addonFocusRequestId = null;
       DocumentBridge.announce(
-        'Accessible Equation Editor is not open. Open it once from the Extensions menu, then use Control Shift 9.'
+        'Accessible Equation Editor is not open. Open it once from the Extensions menu, then press F2.'
       );
     }, 700);
     return frames.length > 0;
@@ -134,26 +134,9 @@
     if (e.key === 'F2' && !e.ctrlKey && !e.altKey && !isFocusInPanel()) {
       e.preventDefault();
       e.stopPropagation();
-      DocsUtils.captureCursorPointer();
-      DocsUtils.focusEditor();
-      setTimeout(() => {
-        const nearest = EquationNavigator.getEquationForEdit();
-        if (!nearest?.latex?.trim()) {
-          const total = EquationNavigator.getEquationList().length;
-          DocumentBridge.announce(
-            total
-              ? `${total} equations found. Use Up or Down arrow to select one, then press F2.`
-              : 'No equations in document.'
-          );
-          return;
-        }
-        editTarget = nearest;
-        openEditorPanel('edit', {
-          latex: nearest.latex,
-          focusEditor: true
-        });
-        EquationNavigator.setComposingNew(false);
-      }, 100);
+      e.stopImmediatePropagation();
+      requestAccessibleAddonFocus();
+      return false;
     }
 
     if (e.key === 'Escape' && EditorPanel.isVisible()) {

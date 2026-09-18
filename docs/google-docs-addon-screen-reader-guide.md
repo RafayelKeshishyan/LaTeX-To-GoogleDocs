@@ -8,7 +8,7 @@ Use the latest Chrome and the latest available NVDA or JAWS. In Google Docs, tur
 
 The sidebar heading must be **Accessible Equation Editor**. A sidebar headed **LaTeX Equation Editor** is the older Chrome extension and should not be used for the image workflow.
 
-Open **Accessible Equation Editor** once and leave it open. The sidebar's **Return to document** button moves focus directly back to the Docs editing area. With Chrome extension version 2.12.1 loaded, `Ctrl+Shift+9` returns focus to the open Accessible Equation Editor. If the Docs cursor is next to an equation, the screen reader announces its natural wording and its LaTeX loads selected for editing; otherwise the field opens in new-equation mode. `Alt+Shift+E` is not used because Google Docs captures it for the Extensions menu. Do not rely on `Ctrl+Alt+Period` or `Ctrl+Alt+Comma`: depending on the Docs layout and screen reader, those commands can land on Google's Calendar/Keep side panel instead.
+Open **Accessible Equation Editor** once and leave it open. The sidebar's **Return to document** button moves focus directly back to the Docs editing area. With Chrome extension version 2.12.2 loaded, press `F2` while the cursor is in Docs to return to the open editor. If the cursor is next to an equation, the screen reader announces its natural wording and its LaTeX loads selected for editing; otherwise the field opens in new-equation mode. This avoids the conflicting `Alt+Shift+E`, `Ctrl+Shift+9`, and Docs side-panel shortcuts.
 
 ## Student workflow
 
@@ -77,7 +77,7 @@ Complex matrices, aligned derivations, structural chemical diagrams, graphs, and
 
 - Google Docs owns the document accessibility tree and some announcements such as “application” or “image.” The add-on cannot suppress those words.
 - Pressing Enter on an image cannot launch the add-on. Google Docs does not expose a Docs selection-change trigger, an Enter-on-image handler, or a global add-on keyboard shortcut to Apps Script.
-- Apps Script can move focus from its sidebar back into Docs, but it has no matching reverse API. Chrome extension version 2.12.1 supplies that missing bridge with `Ctrl+Shift+9`; schools that block Chrome extensions must use the add-on menu to return to the sidebar.
+- Apps Script can move focus from its sidebar back into Docs, but it has no matching reverse API. Chrome extension version 2.12.2 supplies that missing bridge with `F2`; schools that block Chrome extensions must use the add-on menu to return to the sidebar.
 - Image alt text is linear speech, not structurally navigable MathML. It does not provide MathCAT-style movement through a numerator, denominator, exponent, or matrix.
 - A `blob:https://docs.google.com/...` address is temporary browser rendering data. It is not a stable equation identifier. The add-on uses the Apps Script `InlineImage`, adjacent cursor position or optional selection, document path, and saved equation metadata instead.
 

@@ -56,6 +56,8 @@ assert.match(html, /function focusEditorForDocumentCursor\(\)/);
 assert.match(html, /New equation mode\./);
 assert.match(html, /Linear LaTeX\. Editing equation:/);
 assert.match(html, /The LaTeX is selected and ready to edit\./);
+assert.match(html, /press F2 to return here and edit it/);
+assert.match(html, /event\.ctrlKey && event\.shiftKey && event\.key === 'Delete'/);
 assert.match(html, /dataset\.selectedAction === 'edit'/);
 assert.match(html, /dataset\.selectedAction === 'delete'/);
 

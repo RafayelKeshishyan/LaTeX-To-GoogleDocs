@@ -109,7 +109,7 @@
   <main>
     <h1>Accessible Equation Editor</h1>
     <p class="subtitle">Type LaTeX, then insert an equation image with spoken alt text.</p>
-    <p class="hint"><strong>Keep this sidebar open while you work.</strong> Use Return to document below when you need to position the cursor next to an equation.</p>
+    <p class="hint"><strong>Keep this sidebar open while you work.</strong> Use Return to document, put the cursor beside an equation, then press F2 to return here and edit it.</p>
     <button class="secondary template-button" id="return-to-document-button" type="button">
       Return to document
     </button>
@@ -684,6 +684,12 @@
         saveEquation();
       }
     });
+    document.addEventListener('keydown', function (event) {
+      if (event.ctrlKey && event.shiftKey && event.key === 'Delete') {
+        event.preventDefault();
+        prepareOrDeleteSelectedEquation();
+      }
+    }, true);
     insertButton.addEventListener('click', saveEquation);
     readButton.addEventListener('click', function () {
       setStatus('Math wording: ' + naturalSpeech(latexInput.value));
