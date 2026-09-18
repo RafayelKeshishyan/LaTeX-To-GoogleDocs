@@ -9,8 +9,8 @@ function onOpen(e) {
   DocumentApp.getUi()
     .createAddonMenu()
     .addItem('Open Accessible Equation Editor', 'showSidebar')
-    .addItem('Edit selected equation', 'showSidebarForSelectedEquation')
-    .addItem('Delete selected equation...', 'showSidebarForSelectedEquationDelete')
+    .addItem('Edit equation at cursor', 'showSidebarForSelectedEquation')
+    .addItem('Delete equation at cursor...', 'showSidebarForSelectedEquationDelete')
     .addToUi();
 }
 
@@ -28,12 +28,12 @@ function showSidebar() {
   showSidebar_('');
 }
 
-/** Open the sidebar and load the equation currently selected in Docs. */
+/** Open the sidebar and load the equation selected or adjacent to the cursor. */
 function showSidebarForSelectedEquation() {
   showSidebar_('edit');
 }
 
-/** Open the sidebar and ask for confirmation before deleting the selection. */
+/** Open the sidebar and confirm deletion of the equation at the cursor. */
 function showSidebarForSelectedEquationDelete() {
   showSidebar_('delete');
 }
@@ -145,37 +145,39 @@ function listEquationImages() {
   });
 }
 
-/** Return the add-on equation image currently selected in Google Docs. */
+/** Return the add-on equation image selected or immediately next to the cursor. */
 function getSelectedEquation() {
   var doc = DocumentApp.getActiveDocument();
   var selection = doc.getSelection();
-  if (!selection) {
+  var selectedImages = [];
+  if (selection) {
+    var rangeElements = selection.getRangeElements
+      ? selection.getRangeElements()
+      : selection.getSelectedElements();
+    selectedImages = rangeElements.map(function(rangeElement) {
+      return rangeElement.getElement();
+    }).filter(isEquationImage_);
+  }
+
+  if (selectedImages.length > 1) {
     return {
       success: false,
-      error: 'Select one equation image in the document, then try again.'
+      error: 'Select only one equation image.'
     };
   }
 
-  var rangeElements = selection.getRangeElements
-    ? selection.getRangeElements()
-    : selection.getSelectedElements();
-  var selectedImages = rangeElements.map(function(rangeElement) {
-    return rangeElement.getElement();
-  }).filter(function(element) {
-    return element.getType() === DocumentApp.ElementType.INLINE_IMAGE &&
-      element.getAltTitle() === ACCESSIBLE_MATH_TITLE;
-  });
-
-  if (selectedImages.length !== 1) {
+  var targetImage = selectedImages.length === 1
+    ? selectedImages[0]
+    : equationAdjacentToCursor_(doc.getCursor());
+  if (targetImage && targetImage.error) return targetImage;
+  if (!targetImage) {
     return {
       success: false,
-      error: selectedImages.length > 1
-        ? 'Select only one equation image.'
-        : 'The selected item is not an equation created by this add-on.'
+      error: 'Put the document cursor immediately before or after one equation, then try again.'
     };
   }
 
-  var selectedPath = elementPath_(selectedImages[0]);
+  var selectedPath = elementPath_(targetImage);
   var images = getEquationImages_();
   var selectedIndex = -1;
   for (var index = 0; index < images.length; index += 1) {
@@ -185,7 +187,7 @@ function getSelectedEquation() {
     }
   }
   if (selectedIndex < 0) {
-    return { success: false, error: 'The selected equation could not be located.' };
+    return { success: false, error: 'The equation at the cursor could not be located.' };
   }
 
   var image = images[selectedIndex];
@@ -198,6 +200,62 @@ function getSelectedEquation() {
   }
 
   return { success: true, equation: equationRecord_(image, selectedIndex) };
+}
+
+function isEquationImage_(element) {
+  return Boolean(element &&
+    typeof element.getType === 'function' &&
+    element.getType() === DocumentApp.ElementType.INLINE_IMAGE &&
+    element.getAltTitle() === ACCESSIBLE_MATH_TITLE);
+}
+
+/** Find one add-on equation immediately before or after the Docs cursor. */
+function equationAdjacentToCursor_(cursor) {
+  if (!cursor || typeof cursor.getElement !== 'function' || typeof cursor.getOffset !== 'function') {
+    return null;
+  }
+  var element = cursor.getElement();
+  var offset = cursor.getOffset();
+  if (isEquationImage_(element)) return element;
+
+  var candidates = [];
+  function addCandidate(candidate) {
+    if (isEquationImage_(candidate) && candidates.indexOf(candidate) < 0) {
+      candidates.push(candidate);
+    }
+  }
+  function childAt(container, index) {
+    if (!container || typeof container.getChild !== 'function' || index < 0) return null;
+    if (typeof container.getNumChildren === 'function' && index >= container.getNumChildren()) {
+      return null;
+    }
+    try {
+      return container.getChild(index);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  if (typeof element.getChild === 'function') {
+    addCandidate(childAt(element, offset));
+    addCandidate(childAt(element, offset - 1));
+  } else if (typeof element.getParent === 'function') {
+    var parent = element.getParent();
+    if (parent && typeof parent.getChildIndex === 'function') {
+      var childIndex = parent.getChildIndex(element);
+      var text = typeof element.getText === 'function' ? element.getText() : '';
+      if (offset === 0) addCandidate(childAt(parent, childIndex - 1));
+      if (offset === text.length) addCandidate(childAt(parent, childIndex + 1));
+    }
+  }
+
+  if (candidates.length > 1) {
+    return {
+      success: false,
+      error: 'The cursor is between two equations. Move it to the other side of the equation you want.'
+    };
+  }
+  return candidates[0] || null;
 }
 
 function equationRecord_(image, index) {

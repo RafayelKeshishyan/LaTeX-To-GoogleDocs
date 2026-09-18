@@ -17,8 +17,9 @@ For example, `y=x^2` is inserted as a visual equation whose alt description is �
 - By default, each insertion advances the saved Docs cursor to a new paragraph, so consecutive equations appear one below another.
 - The placement checkbox also supports inline answers inside teacher-created blanks.
 - Equations inserted by the add-on can be loaded, replaced in place, or deleted from the sidebar.
-- A student can select an equation while reading the document and use the dedicated **Edit selected equation** or **Delete selected equation...** menu command for that exact image.
-- The sidebar can remain open for the entire assignment. **Return to document** moves focus back to Docs, and the Docs side-panel landmark shortcut returns to the open sidebar without reopening the Extensions menu.
+- A student can put the Docs text cursor immediately before or after an equation and use **Edit equation at cursor** or **Delete equation at cursor...**. Mouse-based image selection is optional.
+- The sidebar can remain open for the entire assignment. **Return to document** moves focus back to Docs.
+- If Chrome extension version 2.12.0 is permitted, **Alt+Shift+E** returns focus from Docs to the already-open add-on sidebar. Without the helper extension, Google Docs provides no dependable shortcut into a custom Apps Script sidebar.
 - Selected-image deletion uses a two-step confirmation, and replacement verifies the image identity before changing the document.
 - Original LaTeX is stored in document properties so it can be edited later.
 - KaTeX `\ce{...}` formulas and expanded Algebra 2, introductory calculus, physics, and chemistry speech are supported for basic classroom notation.
@@ -97,7 +98,7 @@ The sidebar uses KaTeX and html2canvas from jsDelivr. The school network must al
 5. Return to the document and navigate across the image. Record exactly what the screen reader says.
 6. Repeat with `y=\sqrt{x+3}` and `\frac{3}{4}`.
 7. Reopen or refresh the sidebar, select an equation under **Equations in document**, change it, and activate **Replace equation**.
-8. In the document, select an equation image. Use **Extensions → Accessible Equations for Google Docs → Edit selected equation**, change it, and activate **Replace equation**.
+8. In the document, put the cursor immediately before or after an equation image. Use **Extensions → Accessible Equations for Google Docs → Edit equation at cursor**, change it, and activate **Replace equation**.
 9. Run the same test once with NVDA/Chrome and once with JAWS/Chrome.
 
 Success means the equation’s natural wording is spoken in the document without visible delimiter codes. Extra Google Docs container announcements are a platform limitation, but repeated preview markup or add-on-generated “frame/document” chatter is a bug.
@@ -105,7 +106,7 @@ Success means the equation’s natural wording is spoken in the document without
 ## Known constraints
 
 - The add-on cannot intercept keystrokes while focus is in the Google Docs editing canvas.
-- Google Docs does not expose an Enter-on-image or document selection-change trigger. Loading the selected equation requires the add-on menu command or sidebar button.
+- Google Docs does not expose an Enter-on-image or document selection-change trigger. Loading the equation at the cursor requires the add-on menu command or sidebar button.
 - `Alt+Enter` works while focus is in the sidebar’s LaTeX field.
 - The Docs cursor must be placed before focus moves into the sidebar.
 - The add-on does not create native Google Docs equation objects.

@@ -7,6 +7,7 @@
 
   const FRAME_ID = 'latex-gdocs-editor-frame';
   let initialized = false;
+  let addonFocusRequestId = null;
   // The equation F2 opened, so Alt+Enter can overwrite it in place.
   let editTarget = null;
 
@@ -18,6 +19,28 @@
       focusEditor: payload.focusEditor !== false,
       announce: payload.announce || ''
     });
+  }
+
+  function requestAccessibleAddonFocus() {
+    const requestId = `accessible-addon-${Date.now()}-${Math.random()}`;
+    addonFocusRequestId = requestId;
+    const frames = Array.from(document.querySelectorAll('iframe')).filter(
+      (frame) => frame.id !== FRAME_ID && frame.contentWindow
+    );
+    frames.forEach((frame) => {
+      frame.contentWindow.postMessage(
+        { type: 'ACCESSIBLE_EQUATIONS_FOCUS_REQUEST', requestId },
+        '*'
+      );
+    });
+    setTimeout(() => {
+      if (addonFocusRequestId !== requestId) return;
+      addonFocusRequestId = null;
+      DocumentBridge.announce(
+        'Accessible Equation Editor is not open. Open it once from the Extensions menu, then use Alt Shift E.'
+      );
+    }, 700);
+    return frames.length > 0;
   }
 
   function triggerInsertInPanel(options = {}) {
@@ -195,6 +218,27 @@
     DocsUtils.attachKeyListeners(onKeyDown, true);
     window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('message', (event) => {
+      if (
+        event.data?.type === 'ACCESSIBLE_EQUATIONS_FOCUS_READY' &&
+        event.data.requestId === addonFocusRequestId
+      ) {
+        addonFocusRequestId = null;
+        const frame = Array.from(document.querySelectorAll('iframe')).find(
+          (candidate) => candidate.contentWindow === event.source
+        );
+        if (frame) {
+          frame.focus();
+          try {
+            frame.contentWindow.focus();
+          } catch {
+            /* The follow-up message still focuses the input inside the frame. */
+          }
+          frame.contentWindow.postMessage(
+            { type: 'ACCESSIBLE_EQUATIONS_FOCUS_INPUT', requestId: event.data.requestId },
+            '*'
+          );
+        }
+      }
       if (event.data?.type === 'LATEX_GDOCS_READ_EQUATION') {
         EquationNavigator.readEquationAtCursor();
       }
@@ -410,6 +454,12 @@
         if (msg.action === 'readEquationAtCursor') {
           EquationNavigator.readEquationAtCursor();
           sendResponse({ ok: true });
+          return true;
+        }
+
+        if (msg.action === 'focusAccessibleAddon') {
+          const requested = requestAccessibleAddonFocus();
+          sendResponse({ ok: requested });
           return true;
         }
 

@@ -8,7 +8,7 @@ Use the latest Chrome and the latest available NVDA or JAWS. In Google Docs, tur
 
 The sidebar heading must be **Accessible Equation Editor**. A sidebar headed **LaTeX Equation Editor** is the older Chrome extension and should not be used for the image workflow.
 
-Open **Accessible Equation Editor** once and leave it open for the entire assignment. On Windows, `Ctrl+Alt+Period` moves forward through the Docs landmarks, including the side panel, and `Ctrl+Alt+Comma` moves in reverse. The sidebar's **Return to document** button moves focus directly back to the Docs editing area.
+Open **Accessible Equation Editor** once and leave it open. The sidebar's **Return to document** button moves focus directly back to the Docs editing area. With Chrome extension version 2.12.0 loaded, `Alt+Shift+E` returns focus to the open Accessible Equation Editor. Do not rely on `Ctrl+Alt+Period` or `Ctrl+Alt+Comma`: depending on the Docs layout and screen reader, those commands can land on Google's Calendar/Keep side panel instead.
 
 ## Student workflow
 
@@ -35,8 +35,8 @@ An equation created by the add-on is an inline image. The screen reader should a
 
 ### Edit an answer
 
-1. Navigate to and select the equation image in the Google Docs document.
-2. Move to the already-open sidebar and activate **Edit selected equation from document**. The Extensions menu command is only a fallback when the sidebar is closed.
+1. Navigate to the equation and put the text cursor immediately before or after it. Highlighting the image is optional.
+2. Activate **Edit equation at cursor** from the add-on menu, or **Edit equation at document cursor** if focus can be returned to the open sidebar.
 3. Edit the loaded LaTeX in the sidebar.
 4. Activate **Replace equation**.
 
@@ -44,10 +44,10 @@ The replacement stays in the selected image’s document position. If another co
 
 ### Delete an answer
 
-1. Select the equation image in Google Docs.
-2. Move to the already-open sidebar and activate **Delete selected equation from document**. The Extensions menu command is only a fallback when the sidebar is closed.
+1. Put the text cursor immediately before or after the equation image.
+2. Activate **Delete equation at cursor...** from the add-on menu, or **Delete equation at document cursor** if focus can be returned to the open sidebar.
 3. Listen to the equation wording in the confirmation message.
-4. Activate **Confirm delete selected equation**.
+4. Activate **Confirm delete equation at cursor**.
 
 The two-step action is intentional protection against deleting the wrong answer.
 
@@ -76,9 +76,10 @@ Complex matrices, aligned derivations, structural chemical diagrams, graphs, and
 ## Platform boundaries
 
 - Google Docs owns the document accessibility tree and some announcements such as “application” or “image.” The add-on cannot suppress those words.
-- Pressing Enter on an image cannot launch the add-on. Google Docs does not expose a Docs selection-change trigger or an Enter-on-image handler to Apps Script.
+- Pressing Enter on an image cannot launch the add-on. Google Docs does not expose a Docs selection-change trigger, an Enter-on-image handler, or a global add-on keyboard shortcut to Apps Script.
+- Apps Script can move focus from its sidebar back into Docs, but it has no matching reverse API. Chrome extension version 2.12.0 supplies that missing bridge with `Alt+Shift+E`; schools that block Chrome extensions must use the add-on menu to return to the sidebar.
 - Image alt text is linear speech, not structurally navigable MathML. It does not provide MathCAT-style movement through a numerator, denominator, exponent, or matrix.
-- A `blob:https://docs.google.com/...` address is temporary browser rendering data. It is not a stable equation identifier. The add-on uses the Apps Script `InlineImage`, current selection, document path, and saved equation metadata instead.
+- A `blob:https://docs.google.com/...` address is temporary browser rendering data. It is not a stable equation identifier. The add-on uses the Apps Script `InlineImage`, adjacent cursor position or optional selection, document path, and saved equation metadata instead.
 
 ## What testers should record
 

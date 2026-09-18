@@ -43,12 +43,15 @@ for (const [latex, expected] of cases) {
 assert.doesNotMatch(html, /\.innerHTML\s*=/, 'Sidebar must not build accessible content with innerHTML.');
 assert.match(html, /class="visual-preview" aria-hidden="true"/);
 assert.match(html, /role="status" aria-live="assertive"/);
-assert.match(html, />\s*Edit selected equation from document\s*</);
-assert.match(html, />\s*Delete selected equation from document\s*</);
+assert.match(html, />\s*Edit equation at document cursor\s*</);
+assert.match(html, />\s*Delete equation at document cursor\s*</);
 assert.match(html, /id="new-line-after" type="checkbox" checked/);
 assert.match(html, /mhchem\.min\.js/);
 assert.match(html, />\s*Return to document\s*</);
 assert.match(html, /google\.script\.host\.editor\.focus\(\)/);
+assert.match(html, /ACCESSIBLE_EQUATIONS_FOCUS_REQUEST/);
+assert.match(html, /ACCESSIBLE_EQUATIONS_FOCUS_READY/);
+assert.match(html, /ACCESSIBLE_EQUATIONS_FOCUS_INPUT/);
 assert.match(html, /dataset\.selectedAction === 'edit'/);
 assert.match(html, /dataset\.selectedAction === 'delete'/);
 

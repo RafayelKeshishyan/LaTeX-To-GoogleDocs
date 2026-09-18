@@ -109,7 +109,7 @@
   <main>
     <h1>Accessible Equation Editor</h1>
     <p class="subtitle">Type LaTeX, then insert an equation image with spoken alt text.</p>
-    <p class="hint"><strong>Keep this sidebar open while you work.</strong> On Windows, use Ctrl+Alt+Period or Ctrl+Alt+Comma to move between the Google Doc and this side panel.</p>
+    <p class="hint"><strong>Keep this sidebar open while you work.</strong> Use Return to document below when you need to position the cursor next to an equation.</p>
     <button class="secondary template-button" id="return-to-document-button" type="button">
       Return to document
     </button>
@@ -151,10 +151,10 @@
         <button class="secondary small-button" id="refresh-button" type="button">Refresh</button>
       </div>
       <button class="secondary template-button" id="edit-selected-button" type="button">
-        Edit selected equation from document
+        Edit equation at document cursor
       </button>
       <button class="danger template-button" id="delete-selected-button" type="button">
-        Delete selected equation from document
+        Delete equation at document cursor
       </button>
       <p id="empty-list" class="hint">No accessible equation images yet.</p>
       <ol id="equation-list"></ol>
@@ -571,27 +571,27 @@
     }
 
     function loadSelectedEquation() {
-      setStatus('Loading the selected equation.');
+      setStatus('Loading the equation at the document cursor.');
       editSelectedButton.disabled = true;
       google.script.run
         .withSuccessHandler(function (result) {
           editSelectedButton.disabled = false;
           if (!result || !result.success) {
-            setStatus((result && result.error) || 'The selected equation could not be loaded.', 'error');
+            setStatus((result && result.error) || 'The equation at the cursor could not be loaded.', 'error');
             return;
           }
           editEquation(result.equation);
         })
         .withFailureHandler(function (error) {
           editSelectedButton.disabled = false;
-          setStatus(error.message || 'The selected equation could not be loaded.', 'error');
+          setStatus(error.message || 'The equation at the cursor could not be loaded.', 'error');
         })
         .getSelectedEquation();
     }
 
     function resetSelectedDelete() {
       pendingSelectedDelete = null;
-      deleteSelectedButton.textContent = 'Delete selected equation from document';
+      deleteSelectedButton.textContent = 'Delete equation at document cursor';
     }
 
     function prepareOrDeleteSelectedEquation() {
@@ -601,23 +601,23 @@
         deleteEquation(equation);
         return;
       }
-      setStatus('Checking the selected equation.');
+      setStatus('Checking the equation at the document cursor.');
       deleteSelectedButton.disabled = true;
       google.script.run
         .withSuccessHandler(function (result) {
           deleteSelectedButton.disabled = false;
           if (!result || !result.success) {
-            setStatus((result && result.error) || 'The selected equation could not be loaded.', 'error');
+            setStatus((result && result.error) || 'The equation at the cursor could not be loaded.', 'error');
             return;
           }
           pendingSelectedDelete = result.equation;
-          deleteSelectedButton.textContent = 'Confirm delete selected equation';
+          deleteSelectedButton.textContent = 'Confirm delete equation at cursor';
           setStatus('Selected: ' + result.equation.speech + '. Activate Confirm delete to remove it.');
           deleteSelectedButton.focus();
         })
         .withFailureHandler(function (error) {
           deleteSelectedButton.disabled = false;
-          setStatus(error.message || 'The selected equation could not be loaded.', 'error');
+          setStatus(error.message || 'The equation at the cursor could not be loaded.', 'error');
         })
         .getSelectedEquation();
     }
@@ -678,6 +678,21 @@
     refreshButton.addEventListener('click', refreshEquations);
     editSelectedButton.addEventListener('click', loadSelectedEquation);
     deleteSelectedButton.addEventListener('click', prepareOrDeleteSelectedEquation);
+
+    window.addEventListener('message', function (event) {
+      if (event.origin !== 'https://docs.google.com') return;
+      if (event.data && event.data.type === 'ACCESSIBLE_EQUATIONS_FOCUS_REQUEST') {
+        event.source.postMessage({
+          type: 'ACCESSIBLE_EQUATIONS_FOCUS_READY',
+          requestId: event.data.requestId
+        }, event.origin);
+        return;
+      }
+      if (event.data && event.data.type === 'ACCESSIBLE_EQUATIONS_FOCUS_INPUT') {
+        setStatus('Accessible Equation Editor ready.');
+        latexInput.focus();
+      }
+    });
 
     updatePreview();
     refreshEquations();

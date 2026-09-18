@@ -42,6 +42,8 @@ class MockImage {
 class MockBody {
   constructor() { this.images = []; }
   getImages() { return this.images.slice(); }
+  getChild(index) { return this.images[index]; }
+  getNumChildren() { return this.images.length; }
   getChildIndex(image) { return this.images.indexOf(image); }
   insertInlineImage(first, second) {
     const hasIndex = typeof first === 'number';
@@ -190,7 +192,48 @@ assert.equal(listed[0].speech, 'y equals x squared');
 
 const nothingSelected = context.getSelectedEquation();
 assert.equal(nothingSelected.success, false);
-assert.match(nothingSelected.error, /Select one equation image/);
+assert.match(nothingSelected.error, /cursor immediately before or after/);
+
+cursor = {
+  getElement: () => body,
+  getOffset: () => 0
+};
+const equationBeforeCursor = context.getSelectedEquation();
+assert.equal(equationBeforeCursor.success, true);
+assert.equal(equationBeforeCursor.equation.latex, 'y=x^2');
+
+cursor = {
+  getElement: () => body,
+  getOffset: () => 1
+};
+const equationAfterCursor = context.getSelectedEquation();
+assert.equal(equationAfterCursor.success, true);
+assert.equal(equationAfterCursor.equation.latex, 'y=x^2');
+
+const textBeforeImage = {
+  getText: () => 'work',
+  getParent: () => textParagraph
+};
+const textAfterImage = {
+  getText: () => 'answer',
+  getParent: () => textParagraph
+};
+const textParagraph = {
+  children: [textBeforeImage, body.images[0], textAfterImage],
+  getChild(index) { return this.children[index]; },
+  getNumChildren() { return this.children.length; },
+  getChildIndex(child) { return this.children.indexOf(child); }
+};
+assert.equal(context.equationAdjacentToCursor_({
+  getElement: () => textBeforeImage,
+  getOffset: () => 4
+}), body.images[0]);
+assert.equal(context.equationAdjacentToCursor_({
+  getElement: () => textAfterImage,
+  getOffset: () => 0
+}), body.images[0]);
+
+cursor = { insertInlineImage: (blob) => body.insertInlineImage(blob) };
 selection = {
   getRangeElements: () => [{ getElement: () => body.images[0] }]
 };

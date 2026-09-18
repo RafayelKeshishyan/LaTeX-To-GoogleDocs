@@ -50,6 +50,13 @@ chrome.commands.onCommand.addListener((command) => {
       return;
     }
 
+    if (command === 'insert-equation') {
+      chrome.tabs.sendMessage(tab.id, { action: 'focusAccessibleAddon' }).catch((err) =>
+        console.warn('[LaTeX-GDocs] focus accessible add-on command', err)
+      );
+      return;
+    }
+
     const state = {
       mode: 'new',
       announce:

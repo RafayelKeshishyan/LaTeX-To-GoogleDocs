@@ -45,7 +45,7 @@ Everything below works from the document unless noted.
 | Delete the equation at the cursor | **Ctrl+Shift+Delete** |
 | Copy a diagnostic report to the clipboard | **Ctrl+Shift+F9** |
 
-**Alt+Shift+E** is registered as a browser-level command, so it opens the editor even when the document does not have focus. Rebind it at `chrome://extensions/shortcuts`.
+**Alt+Shift+E** is registered as a browser-level command. In version 2.12.0 it focuses the already-open **Accessible Equation Editor** Apps Script sidebar, providing the keyboard bridge that Google Docs does not provide for custom sidebars. Open the add-on sidebar once from the Extensions menu first. Rebind the shortcut at `chrome://extensions/shortcuts` if needed.
 
 ### Where the equation lands
 
