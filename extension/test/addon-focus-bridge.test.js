@@ -20,5 +20,7 @@ assert.match(content, /ACCESSIBLE_EQUATIONS_FOCUS_INPUT/);
 assert.match(addon, /ACCESSIBLE_EQUATIONS_FOCUS_REQUEST/);
 assert.match(addon, /ACCESSIBLE_EQUATIONS_FOCUS_READY/);
 assert.match(addon, /ACCESSIBLE_EQUATIONS_FOCUS_INPUT/);
+assert.match(addon, /focusEditorForDocumentCursor/);
+assert.match(addon, /\.getSelectedEquation\(\)/);
 
 console.log('Accessible add-on focus bridge checks passed.');

@@ -589,6 +589,28 @@
         .getSelectedEquation();
     }
 
+    function focusEditorForDocumentCursor() {
+      setStatus('Checking the document cursor.');
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (result && result.success) {
+            editEquation(result.equation);
+            return;
+          }
+          stopEditing(false);
+          setStatus('New equation mode. ' +
+            ((result && result.error) || 'No equation is next to the document cursor.'));
+          latexInput.focus();
+        })
+        .withFailureHandler(function (error) {
+          stopEditing(false);
+          setStatus((error.message || 'The document cursor could not be checked.') +
+            ' New equation mode.', 'error');
+          latexInput.focus();
+        })
+        .getSelectedEquation();
+    }
+
     function resetSelectedDelete() {
       pendingSelectedDelete = null;
       deleteSelectedButton.textContent = 'Delete equation at document cursor';
@@ -689,8 +711,7 @@
         return;
       }
       if (event.data && event.data.type === 'ACCESSIBLE_EQUATIONS_FOCUS_INPUT') {
-        setStatus('Accessible Equation Editor ready.');
-        latexInput.focus();
+        focusEditorForDocumentCursor();
       }
     });
 

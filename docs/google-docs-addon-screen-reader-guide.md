@@ -8,7 +8,7 @@ Use the latest Chrome and the latest available NVDA or JAWS. In Google Docs, tur
 
 The sidebar heading must be **Accessible Equation Editor**. A sidebar headed **LaTeX Equation Editor** is the older Chrome extension and should not be used for the image workflow.
 
-Open **Accessible Equation Editor** once and leave it open. The sidebar's **Return to document** button moves focus directly back to the Docs editing area. With Chrome extension version 2.12.0 loaded, `Alt+Shift+E` returns focus to the open Accessible Equation Editor. Do not rely on `Ctrl+Alt+Period` or `Ctrl+Alt+Comma`: depending on the Docs layout and screen reader, those commands can land on Google's Calendar/Keep side panel instead.
+Open **Accessible Equation Editor** once and leave it open. The sidebar's **Return to document** button moves focus directly back to the Docs editing area. With Chrome extension version 2.12.0 loaded, `Alt+Shift+E` returns focus to the open Accessible Equation Editor. If the Docs cursor is next to an equation, that equation loads for editing; otherwise the LaTeX field opens in new-equation mode. Do not rely on `Ctrl+Alt+Period` or `Ctrl+Alt+Comma`: depending on the Docs layout and screen reader, those commands can land on Google's Calendar/Keep side panel instead.
 
 ## Student workflow
 

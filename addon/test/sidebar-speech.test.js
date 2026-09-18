@@ -52,6 +52,8 @@ assert.match(html, /google\.script\.host\.editor\.focus\(\)/);
 assert.match(html, /ACCESSIBLE_EQUATIONS_FOCUS_REQUEST/);
 assert.match(html, /ACCESSIBLE_EQUATIONS_FOCUS_READY/);
 assert.match(html, /ACCESSIBLE_EQUATIONS_FOCUS_INPUT/);
+assert.match(html, /function focusEditorForDocumentCursor\(\)/);
+assert.match(html, /New equation mode\./);
 assert.match(html, /dataset\.selectedAction === 'edit'/);
 assert.match(html, /dataset\.selectedAction === 'delete'/);
 
