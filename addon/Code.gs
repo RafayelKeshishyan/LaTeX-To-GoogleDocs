@@ -8,8 +8,9 @@
 function onOpen(e) {
   DocumentApp.getUi()
     .createAddonMenu()
-    .addItem('LaTeX Equation Editor', 'showSidebar')
+    .addItem('Open Accessible Equation Editor', 'showSidebar')
     .addItem('Edit selected equation', 'showSidebarForSelectedEquation')
+    .addItem('Delete selected equation...', 'showSidebarForSelectedEquationDelete')
     .addToUi();
 }
 
@@ -24,17 +25,22 @@ function onInstall(e) {
  * Show the LaTeX equation sidebar.
  */
 function showSidebar() {
-  showSidebar_(false);
+  showSidebar_('');
 }
 
 /** Open the sidebar and load the equation currently selected in Docs. */
 function showSidebarForSelectedEquation() {
-  showSidebar_(true);
+  showSidebar_('edit');
 }
 
-function showSidebar_(loadSelectedEquation) {
+/** Open the sidebar and ask for confirmation before deleting the selection. */
+function showSidebarForSelectedEquationDelete() {
+  showSidebar_('delete');
+}
+
+function showSidebar_(selectedAction) {
   var template = HtmlService.createTemplateFromFile('Sidebar');
-  template.loadSelectedEquation = loadSelectedEquation;
+  template.selectedAction = selectedAction || '';
   var html = template.evaluate()
     .setTitle('LaTeX for Google Docs')
     .setWidth(320);
@@ -75,7 +81,8 @@ function insertEquationImage(payload) {
 
   configureEquationImage_(image, parts);
   saveEquationMetadata_(image, parts.latex, parts.speech);
-  moveCursorBelowImage_(doc, image);
+  if (parts.newLineAfter) moveCursorBelowImage_(doc, image);
+  else moveCursorAfterImage_(doc, image);
 
   return {
     success: true,
@@ -113,18 +120,28 @@ function moveCursorBelowImage_(doc, image) {
   return true;
 }
 
+/** Keep worksheet answers inline by moving the saved Docs cursor past the image. */
+function moveCursorAfterImage_(doc, image) {
+  var paragraph = image.getParent();
+  if (!paragraph || typeof paragraph.getChildIndex !== 'function') return false;
+  var childIndex = paragraph.getChildIndex(image);
+  if (childIndex < 0) return false;
+  var position;
+  if (doc.getActiveTab) {
+    position = doc.getActiveTab().asDocumentTab().newPosition(paragraph, childIndex + 1);
+  } else {
+    position = doc.newPosition(paragraph, childIndex + 1);
+  }
+  doc.setCursor(position);
+  return true;
+}
+
 /** List accessible equation images in document order. */
 function listEquationImages() {
   var images = getEquationImages_();
   cleanupEquationMetadata_(images);
   return images.map(function(image, index) {
-    var metadata = readEquationMetadata_(image);
-    return {
-      index: index,
-      latex: metadata ? metadata.latex : '',
-      speech: metadata ? metadata.speech : (image.getAltDescription() || 'equation'),
-      title: image.getAltTitle() || ACCESSIBLE_MATH_TITLE
-    };
+    return equationRecord_(image, index);
   });
 }
 
@@ -180,12 +197,19 @@ function getSelectedEquation() {
     };
   }
 
+  return { success: true, equation: equationRecord_(image, selectedIndex) };
+}
+
+function equationRecord_(image, index) {
+  var metadata = readEquationMetadata_(image);
   return {
-    success: true,
-    equation: {
-      index: selectedIndex,
-      latex: metadata.latex,
-      speech: metadata.speech || image.getAltDescription() || 'equation'
+    index: index,
+    latex: metadata ? metadata.latex : '',
+    speech: metadata ? metadata.speech : (image.getAltDescription() || 'equation'),
+    title: image.getAltTitle() || ACCESSIBLE_MATH_TITLE,
+    target: {
+      path: elementPath_(image),
+      digest: imageDigest_(image)
     }
   };
 }
@@ -202,14 +226,32 @@ function elementPath_(element) {
   return path.join('.');
 }
 
+function findEquationTarget_(index, expectedTarget) {
+  var images = getEquationImages_();
+  if (!expectedTarget || !expectedTarget.path || !expectedTarget.digest) {
+    return images[Number(index)] || null;
+  }
+  for (var imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
+    if (elementPath_(images[imageIndex]) === expectedTarget.path &&
+        imageDigest_(images[imageIndex]) === expectedTarget.digest) {
+      return images[imageIndex];
+    }
+  }
+  return null;
+}
+
 /** Replace one add-on equation image while keeping its document position. */
-function replaceEquationImage(index, payload) {
+function replaceEquationImage(index, payload, expectedTarget) {
   var parts = validateImagePayload_(payload);
   if (!parts.ok) return parts;
 
-  var images = getEquationImages_();
-  var target = images[Number(index)];
-  if (!target) return { success: false, error: 'That equation no longer exists.' };
+  var target = findEquationTarget_(index, expectedTarget);
+  if (!target) {
+    return {
+      success: false,
+      error: 'The document changed. Select the equation again before replacing it.'
+    };
+  }
 
   var parent = target.getParent();
   if (!parent || typeof parent.insertInlineImage !== 'function') {
@@ -230,12 +272,26 @@ function replaceEquationImage(index, payload) {
 }
 
 /** Delete one add-on equation image. */
-function deleteEquationImage(index) {
-  var images = getEquationImages_();
-  var target = images[Number(index)];
-  if (!target) return { success: false, error: 'That equation no longer exists.' };
+function deleteEquationImage(index, expectedTarget) {
+  var target = findEquationTarget_(index, expectedTarget);
+  if (!target) {
+    return {
+      success: false,
+      error: 'The document changed. Select the equation again before deleting it.'
+    };
+  }
   target.removeFromParent();
   return { success: true, message: 'Equation image deleted.' };
+}
+
+/** Delete the equation image currently selected in Google Docs. */
+function deleteSelectedEquation() {
+  var selected = getSelectedEquation();
+  if (!selected.success) return selected;
+  return deleteEquationImage(
+    selected.equation.index,
+    selected.equation.target
+  );
 }
 
 function getActiveBody_() {
@@ -270,7 +326,8 @@ function validateImagePayload_(payload) {
     speech: speech,
     dataUrl: dataUrl,
     width: Math.max(24, rawWidth * scale),
-    height: Math.max(20, rawHeight * scale)
+    height: Math.max(20, rawHeight * scale),
+    newLineAfter: payload.newLineAfter !== false
   };
 }
 
@@ -379,6 +436,33 @@ function getWorksheetTemplates() {
         { label: 'Quadratic formula', latex: 'x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}' },
         { label: 'Discriminant', latex: 'b^2 - 4ac' },
         { label: 'Simple quadratic', latex: 'x^2 + 5x + 6 = 0' }
+      ]
+    },
+    {
+      id: 'tutorial-5',
+      title: 'Tutorial 5 - Introductory Calculus',
+      examples: [
+        { label: 'Limit', latex: '\\lim_{x\\to0} \\frac{\\sin x}{x}' },
+        { label: 'Derivative', latex: '\\frac{dy}{dx}=2x' },
+        { label: 'Definite integral', latex: '\\int_0^1 x^2\\,dx' }
+      ]
+    },
+    {
+      id: 'tutorial-6',
+      title: 'Tutorial 6 - Physics',
+      examples: [
+        { label: 'Newton second law', latex: '\\vec{F}=m\\vec{a}' },
+        { label: 'Kinetic energy', latex: 'E_k=\\frac{1}{2}mv^2' },
+        { label: 'Acceleration with units', latex: 'a=9.8\\ \\mathrm{m/s^2}' }
+      ]
+    },
+    {
+      id: 'tutorial-7',
+      title: 'Tutorial 7 - Chemistry',
+      examples: [
+        { label: 'Water', latex: '\\ce{H2O}' },
+        { label: 'Combustion example', latex: '\\ce{CH4 + 2O2 -> CO2 + 2H2O}' },
+        { label: 'Calcium ion', latex: '\\ce{Ca^2+}' }
       ]
     }
   ];

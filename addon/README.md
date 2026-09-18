@@ -14,10 +14,13 @@ For example, `y=x^2` is inserted as a visual equation whose alt description is �
 - NVDA and JAWS encounter a normal image with a short alt description in the document.
 - The visual KaTeX preview is hidden from the sidebar accessibility tree, avoiding its noisy internal markup.
 - The sidebar exposes the natural wording before insertion and has a **Read wording** button.
-- Each insertion advances the saved Docs cursor to a new paragraph, so consecutive equations appear one below another.
+- By default, each insertion advances the saved Docs cursor to a new paragraph, so consecutive equations appear one below another.
+- The placement checkbox also supports inline answers inside teacher-created blanks.
 - Equations inserted by the add-on can be loaded, replaced in place, or deleted from the sidebar.
-- A student can select an equation while reading the document and use **Edit selected equation** to load that exact equation into the sidebar.
+- A student can select an equation while reading the document and use the dedicated **Edit selected equation** or **Delete selected equation...** menu command for that exact image.
+- Selected-image deletion uses a two-step confirmation, and replacement verifies the image identity before changing the document.
 - Original LaTeX is stored in document properties so it can be edited later.
+- KaTeX `\ce{...}` formulas and expanded Algebra 2, introductory calculus, physics, and chemistry speech are supported for basic classroom notation.
 
 ## Important limitation
 
@@ -78,7 +81,7 @@ Then:
 
 1. In Apps Script, run `onOpen` once and approve the requested current-document permission.
 2. Reload the Google Doc.
-3. Use **Extensions → Accessible Equations for Google Docs → LaTeX Equation Editor**.
+3. Use **Extensions → Accessible Equations for Google Docs → Open Accessible Equation Editor**.
 
 Do not create a standalone Apps Script project for this prototype. The cursor APIs used for insertion require document-bound execution. Marketplace packaging can be done after the NVDA and JAWS behavior is proven.
 
@@ -114,3 +117,4 @@ Success means the equation’s natural wording is spoken in the document without
 - Blind-student test: `../docs/blind-student-test.md`
 - Acceptance test: `../docs/acceptance-test.md`
 - Accessibility retrospective: `../docs/docs-extension-a11y-retrospective.md`
+- Student and teacher screen-reader workflow: `../docs/google-docs-addon-screen-reader-guide.md`

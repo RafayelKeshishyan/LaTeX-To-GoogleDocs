@@ -130,6 +130,31 @@ assert.equal(
 );
 assert.deepEqual(savedCursor, { element: nextParagraph, offset: 0 });
 
+const inlineImage = {};
+const inlineParagraph = {
+  getChildIndex(value) {
+    assert.equal(value, inlineImage);
+    return 4;
+  }
+};
+let inlineCursor = null;
+const inlineDocument = {
+  getActiveTab() {
+    return {
+      asDocumentTab() {
+        return {
+          newPosition(element, offset) { return { element, offset }; }
+        };
+      }
+    };
+  },
+  setCursor(position) { inlineCursor = position; }
+};
+inlineImage.getParent = () => inlineParagraph;
+assert.equal(context.moveCursorAfterImage_(inlineDocument, inlineImage), true);
+assert.equal(inlineCursor.element, inlineParagraph);
+assert.equal(inlineCursor.offset, 5);
+
 function payload(sourceText, speech, bytes) {
   return {
     latex: sourceText,
@@ -174,12 +199,23 @@ assert.equal(selectedEquation.success, true);
 assert.equal(selectedEquation.equation.index, 0);
 assert.equal(selectedEquation.equation.latex, 'y=x^2');
 assert.equal(selectedEquation.equation.speech, 'y equals x squared');
+assert.equal(selectedEquation.equation.target.path, '0');
+assert.ok(selectedEquation.equation.target.digest);
 selection = null;
 
 const oldImage = body.images[0];
+const staleTarget = context.replaceEquationImage(
+  0,
+  payload('z=1', 'z equals 1', 'stale image'),
+  { path: '99', digest: selectedEquation.equation.target.digest }
+);
+assert.equal(staleTarget.success, false);
+assert.match(staleTarget.error, /document changed/i);
+assert.equal(body.images[0], oldImage);
 const replaced = context.replaceEquationImage(
   0,
-  payload('y=\\sqrt{x+3}', 'y equals the square root of x plus 3', 'second image')
+  payload('y=\\sqrt{x+3}', 'y equals the square root of x plus 3', 'second image'),
+  selectedEquation.equation.target
 );
 assert.equal(replaced.success, true);
 assert.equal(body.images.length, 1);
@@ -188,7 +224,10 @@ assert.equal(body.images[0].altDescription, 'y equals the square root of x plus 
 listed = context.listEquationImages();
 assert.equal(listed[0].latex, 'y=\\sqrt{x+3}');
 
-const deleted = context.deleteEquationImage(0);
+const staleDelete = context.deleteEquationImage(0, selectedEquation.equation.target);
+assert.equal(staleDelete.success, false);
+assert.match(staleDelete.error, /document changed/i);
+const deleted = context.deleteEquationImage(0, listed[0].target);
 assert.equal(deleted.success, true);
 assert.equal(body.images.length, 0);
 context.listEquationImages();

@@ -17,6 +17,10 @@
     p { margin: 6px 0; }
     .subtitle, .hint { color: #5f6368; font-size: 12px; }
     label { display: block; margin: 12px 0 4px; font-weight: 700; }
+    fieldset { margin: 10px 0 0; padding: 8px; border: 1px solid #dadce0; border-radius: 4px; }
+    legend { padding: 0 4px; font-weight: 700; }
+    .checkbox-label { display: flex; align-items: flex-start; gap: 7px; margin: 0; font-weight: 400; }
+    .checkbox-label input { margin-top: 3px; }
     textarea {
       width: 100%;
       min-height: 92px;
@@ -101,7 +105,7 @@
     }
   </style>
 </head>
-<body data-load-selected="<?= loadSelectedEquation ? 'true' : 'false' ?>">
+<body data-selected-action="<?= selectedAction ?>">
   <main>
     <h1>Accessible Equation Editor</h1>
     <p class="subtitle">Type LaTeX, then insert an equation image with spoken alt text.</p>
@@ -110,6 +114,14 @@
     <textarea id="latex-input" spellcheck="false" aria-describedby="input-help"
       placeholder="Example: y=\sqrt{x + 3}"></textarea>
     <p id="input-help" class="hint">Press Alt+Enter to insert. Enter alone starts a new line.</p>
+
+    <fieldset id="placement-options">
+      <legend>After insertion</legend>
+      <label class="checkbox-label" for="new-line-after">
+        <input id="new-line-after" type="checkbox" checked>
+        <span>Put the next equation on a new line. Uncheck this when filling an inline answer blank.</span>
+      </label>
+    </fieldset>
 
     <div class="visual-preview" aria-hidden="true">
       <div id="render-surface"></div>
@@ -137,6 +149,9 @@
       <button class="secondary template-button" id="edit-selected-button" type="button">
         Edit selected equation from document
       </button>
+      <button class="danger template-button" id="delete-selected-button" type="button">
+        Delete selected equation from document
+      </button>
       <p id="empty-list" class="hint">No accessible equation images yet.</p>
       <ol id="equation-list"></ol>
     </section>
@@ -148,6 +163,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/mhchem.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script>
     'use strict';
@@ -161,27 +177,41 @@
     const readButton = document.getElementById('read-button');
     const clearButton = document.getElementById('clear-button');
     const cancelEditButton = document.getElementById('cancel-edit-button');
+    const newLineAfter = document.getElementById('new-line-after');
     const refreshButton = document.getElementById('refresh-button');
     const editSelectedButton = document.getElementById('edit-selected-button');
+    const deleteSelectedButton = document.getElementById('delete-selected-button');
     const equationList = document.getElementById('equation-list');
     const emptyList = document.getElementById('empty-list');
     const templateList = document.getElementById('template-list');
     let editingIndex = null;
+    let editingTarget = null;
+    let pendingSelectedDelete = null;
 
     const greek = {
       alpha: 'alpha', beta: 'beta', gamma: 'gamma', delta: 'delta', epsilon: 'epsilon',
-      theta: 'theta', lambda: 'lambda', mu: 'mu', pi: 'pi', rho: 'rho', sigma: 'sigma',
-      phi: 'phi', psi: 'psi', omega: 'omega'
+      zeta: 'zeta', eta: 'eta', theta: 'theta', iota: 'iota', kappa: 'kappa',
+      lambda: 'lambda', mu: 'mu', nu: 'nu', xi: 'xi', pi: 'pi', rho: 'rho',
+      sigma: 'sigma', tau: 'tau', upsilon: 'upsilon', phi: 'phi', chi: 'chi',
+      psi: 'psi', omega: 'omega', Delta: 'capital delta', Gamma: 'capital gamma',
+      Lambda: 'capital lambda', Omega: 'capital omega', Phi: 'capital phi',
+      Pi: 'capital pi', Psi: 'capital psi', Sigma: 'capital sigma', Theta: 'capital theta'
     };
     const symbols = {
       pm: 'plus or minus', mp: 'minus or plus', times: 'times', div: 'divided by', cdot: 'times',
       leq: 'less than or equal to', le: 'less than or equal to', geq: 'greater than or equal to',
       ge: 'greater than or equal to', neq: 'not equal to', approx: 'approximately equal to',
-      infty: 'infinity', to: 'approaches', rightarrow: 'approaches', dots: 'dot dot dot',
-      ldots: 'dot dot dot'
+      equiv: 'is equivalent to', propto: 'is proportional to', infty: 'infinity',
+      to: 'approaches', rightarrow: 'approaches', longrightarrow: 'approaches',
+      leftrightarrow: 'if and only if', Rightarrow: 'implies', partial: 'partial',
+      nabla: 'del', hbar: 'h bar', perp: 'is perpendicular to', parallel: 'is parallel to',
+      circ: 'circle', degree: 'degrees', dots: 'dot dot dot', ldots: 'dot dot dot',
+      cdots: 'dot dot dot'
     };
     const functions = {
-      sin: 'sine', cos: 'cosine', tan: 'tangent', log: 'log', ln: 'natural log', exp: 'exponential'
+      sin: 'sine', cos: 'cosine', tan: 'tangent', csc: 'cosecant', sec: 'secant',
+      cot: 'cotangent', arcsin: 'arc sine', arccos: 'arc cosine', arctan: 'arc tangent',
+      log: 'log', ln: 'natural log', exp: 'exponential'
     };
     const operators = {
       '=': 'equals', '+': 'plus', '-': 'minus', '*': 'times', '/': 'divided by',
@@ -219,7 +249,31 @@
       const value = text.trim();
       if (value === '2') return 'squared';
       if (value === '3') return 'cubed';
+      if (value === '\\circ' || value === '\\degree') return 'degrees';
+      if (/^\d*[+-]$/.test(value)) return 'superscript ' + speakSegment(value);
       return 'to the power of ' + speakSegment(value);
+    }
+
+    function speakChemistry(formula) {
+      const elementNames = {
+        H: 'hydrogen', He: 'helium', C: 'carbon', N: 'nitrogen', O: 'oxygen', F: 'fluorine',
+        Ne: 'neon', Na: 'sodium', Mg: 'magnesium', Al: 'aluminum', Si: 'silicon',
+        P: 'phosphorus', S: 'sulfur', Cl: 'chlorine', K: 'potassium', Ca: 'calcium',
+        Fe: 'iron', Cu: 'copper', Zn: 'zinc', Ag: 'silver', I: 'iodine', Ba: 'barium'
+      };
+      const states = { s: 'solid', l: 'liquid', g: 'gas', aq: 'aqueous' };
+      let value = formula
+        .replace(/\^(\d*)([+-])/g, function (_match, count, sign) {
+          return ' charge ' + (count ? count + ' ' : '') + (sign === '+' ? 'plus' : 'minus') + ' ';
+        })
+        .replace(/<=>/g, ' equilibrium ')
+        .replace(/->/g, ' yields ')
+        .replace(/\+/g, ' plus ')
+        .replace(/\((aq|s|l|g)\)/g, function (_match, state) { return ' ' + states[state] + ' '; });
+      value = value.replace(/([A-Z][a-z]?)(\d*)/g, function (_match, symbol, count) {
+        return ' ' + (elementNames[symbol] || symbol) + (count ? ' sub ' + count : '') + ' ';
+      });
+      return value.replace(/\s+/g, ' ').trim();
     }
 
     function speakCommand(source, start) {
@@ -250,12 +304,31 @@
         const body = readArgument(source, next);
         return { text: 'the ' + rootName + ' root of ' + speakSegment(body.text), next: body.next };
       }
-      if (name === 'text' || name === 'mathrm' || name === 'operatorname') {
+      if (name === 'text' || name === 'operatorname') {
         const body = readArgument(source, next);
         return { text: body.text.trim(), next: body.next };
       }
-      if (name === 'sum' || name === 'prod' || name === 'int') {
-        const labels = { sum: 'the sum', prod: 'the product', int: 'the integral' };
+      if (name === 'mathrm' || name === 'mathbf' || name === 'mathit' || name === 'unit') {
+        const body = readArgument(source, next);
+        return { text: speakSegment(body.text), next: body.next };
+      }
+      if (name === 'ce') {
+        const body = readArgument(source, next);
+        return { text: speakChemistry(body.text), next: body.next };
+      }
+      if (name === 'vec' || name === 'overrightarrow' || name === 'hat' ||
+          name === 'bar' || name === 'overline') {
+        const labels = {
+          vec: 'vector', overrightarrow: 'vector', hat: 'hat', bar: 'bar', overline: 'bar'
+        };
+        const body = readArgument(source, next);
+        return { text: labels[name] + ' ' + speakSegment(body.text), next: body.next };
+      }
+      if (name === 'sum' || name === 'prod' || name === 'int' || name === 'iint' || name === 'lim') {
+        const labels = {
+          sum: 'the sum', prod: 'the product', int: 'the integral',
+          iint: 'the double integral', lim: 'the limit'
+        };
         let lower = null;
         let upper = null;
         for (let count = 0; count < 2; count += 1) {
@@ -263,7 +336,7 @@
           else if (source[next] === '^') { upper = readArgument(source, next + 1); next = upper.next; }
         }
         let text = labels[name];
-        if (lower) text += ' from ' + speakSegment(lower.text);
+        if (lower) text += (name === 'lim' ? ' as ' : ' from ') + speakSegment(lower.text);
         if (upper) text += ' to ' + speakSegment(upper.text);
         return { text: text, next: next };
       }
@@ -365,7 +438,8 @@
         speech: naturalSpeech(latex),
         dataUrl: canvas.toDataURL('image/png'),
         width: Math.ceil(box.width),
-        height: Math.ceil(box.height)
+        height: Math.ceil(box.height),
+        newLineAfter: newLineAfter.checked
       };
     }
 
@@ -398,7 +472,7 @@
             setStatus(error.message || 'Google Docs could not save the equation.', 'error');
           });
         if (editingIndex === null) runner.insertEquationImage(payload);
-        else runner.replaceEquationImage(editingIndex, payload);
+        else runner.replaceEquationImage(editingIndex, payload, editingTarget);
       } catch (error) {
         setBusy(false);
         setStatus(error.message, 'error');
@@ -407,8 +481,10 @@
 
     function stopEditing(clearInput) {
       editingIndex = null;
+      editingTarget = null;
       insertButton.textContent = 'Insert at cursor';
       cancelEditButton.hidden = true;
+      newLineAfter.disabled = false;
       if (clearInput) {
         latexInput.value = '';
         updatePreview();
@@ -416,11 +492,14 @@
     }
 
     function editEquation(equation) {
+      resetSelectedDelete();
       editingIndex = equation.index;
+      editingTarget = equation.target || null;
       latexInput.value = equation.latex || '';
       updatePreview();
       insertButton.textContent = 'Replace equation';
       cancelEditButton.hidden = false;
+      newLineAfter.disabled = true;
       setStatus('Editing equation ' + (equation.index + 1) + ': ' + equation.speech);
       latexInput.focus();
       latexInput.select();
@@ -440,7 +519,7 @@
           refreshEquations();
         })
         .withFailureHandler(function (error) { setStatus(error.message, 'error'); })
-        .deleteEquationImage(equation.index);
+        .deleteEquationImage(equation.index, equation.target || null);
     }
 
     function renderEquationList(equations) {
@@ -453,7 +532,7 @@
         const edit = document.createElement('button');
         edit.type = 'button';
         edit.className = 'secondary edit';
-        edit.textContent = equation.speech;
+        edit.textContent = 'Edit: ' + equation.speech;
         edit.setAttribute('aria-label', 'Edit equation ' + (equation.index + 1) + ': ' + equation.speech);
         edit.addEventListener('click', function () { editEquation(equation); });
         const remove = document.createElement('button');
@@ -461,7 +540,17 @@
         remove.className = 'danger';
         remove.textContent = 'Delete';
         remove.setAttribute('aria-label', 'Delete equation ' + (equation.index + 1) + ': ' + equation.speech);
-        remove.addEventListener('click', function () { deleteEquation(equation); });
+        remove.addEventListener('click', function () {
+          if (remove.dataset.confirmed !== 'true') {
+            remove.dataset.confirmed = 'true';
+            remove.textContent = 'Confirm delete';
+            remove.setAttribute('aria-label', 'Confirm delete equation ' +
+              (equation.index + 1) + ': ' + equation.speech);
+            setStatus('Selected for deletion: ' + equation.speech + '. Activate Confirm delete to remove it.');
+            return;
+          }
+          deleteEquation(equation);
+        });
         actions.appendChild(edit);
         actions.appendChild(remove);
         item.appendChild(actions);
@@ -490,6 +579,39 @@
         })
         .withFailureHandler(function (error) {
           editSelectedButton.disabled = false;
+          setStatus(error.message || 'The selected equation could not be loaded.', 'error');
+        })
+        .getSelectedEquation();
+    }
+
+    function resetSelectedDelete() {
+      pendingSelectedDelete = null;
+      deleteSelectedButton.textContent = 'Delete selected equation from document';
+    }
+
+    function prepareOrDeleteSelectedEquation() {
+      if (pendingSelectedDelete) {
+        const equation = pendingSelectedDelete;
+        resetSelectedDelete();
+        deleteEquation(equation);
+        return;
+      }
+      setStatus('Checking the selected equation.');
+      deleteSelectedButton.disabled = true;
+      google.script.run
+        .withSuccessHandler(function (result) {
+          deleteSelectedButton.disabled = false;
+          if (!result || !result.success) {
+            setStatus((result && result.error) || 'The selected equation could not be loaded.', 'error');
+            return;
+          }
+          pendingSelectedDelete = result.equation;
+          deleteSelectedButton.textContent = 'Confirm delete selected equation';
+          setStatus('Selected: ' + result.equation.speech + '. Activate Confirm delete to remove it.');
+          deleteSelectedButton.focus();
+        })
+        .withFailureHandler(function (error) {
+          deleteSelectedButton.disabled = false;
           setStatus(error.message || 'The selected equation could not be loaded.', 'error');
         })
         .getSelectedEquation();
@@ -546,6 +668,7 @@
     });
     refreshButton.addEventListener('click', refreshEquations);
     editSelectedButton.addEventListener('click', loadSelectedEquation);
+    deleteSelectedButton.addEventListener('click', prepareOrDeleteSelectedEquation);
 
     updatePreview();
     refreshEquations();
@@ -554,7 +677,8 @@
       .withFailureHandler(function () { templateList.textContent = 'Examples could not be loaded.'; })
       .getWorksheetTemplates();
     latexInput.focus();
-    if (document.body.dataset.loadSelected === 'true') loadSelectedEquation();
+    if (document.body.dataset.selectedAction === 'edit') loadSelectedEquation();
+    if (document.body.dataset.selectedAction === 'delete') prepareOrDeleteSelectedEquation();
   </script>
 </body>
 </html>
