@@ -33,6 +33,8 @@ class MockImage {
   setAltDescription(value) { this.altDescription = value; return this; }
   setWidth(value) { this.width = value; return this; }
   setHeight(value) { this.height = value; return this; }
+  getWidth() { return this.width; }
+  getHeight() { return this.height; }
   removeFromParent() {
     const index = this.parent.images.indexOf(this);
     if (index >= 0) this.parent.images.splice(index, 1);
@@ -180,13 +182,18 @@ cursor = { insertInlineImage: (blob) => body.insertInlineImage(blob) };
 const inserted = context.insertEquationImage(payload('y=x^2', 'y equals x squared', 'first image'));
 assert.equal(inserted.success, true);
 assert.equal(body.images.length, 1);
-assert.equal(body.images[0].altTitle, 'Equation');
+assert.equal(body.images[0].altTitle, '');
 assert.equal(body.images[0].altDescription, 'y equals x squared');
 assert.equal(body.images[0].width, 124);
 assert.equal(body.images[0].height, 38);
 
+// Legacy doubles are rewritten when the equation list is refreshed.
+body.images[0].setAltTitle('Equation');
+body.images[0].setAltDescription('y equals x squared');
 let listed = context.listEquationImages();
 assert.equal(listed.length, 1);
+assert.equal(body.images[0].altTitle, '');
+assert.equal(body.images[0].altDescription, 'y equals x squared');
 assert.equal(listed[0].latex, 'y=x^2');
 assert.equal(listed[0].speech, 'y equals x squared');
 
@@ -246,6 +253,37 @@ assert.equal(selectedEquation.equation.target.path, '0');
 assert.ok(selectedEquation.equation.target.digest);
 selection = null;
 
+// Path lookup finds the image without scanning every equation for a digest match.
+assert.equal(
+  context.elementAtPath_(selectedEquation.equation.target.path),
+  body.images[0]
+);
+assert.equal(
+  context.findEquationTarget_(0, selectedEquation.equation.target),
+  body.images[0]
+);
+assert.equal(
+  context.findEquationTarget_(0, { path: '0', digest: 'deadbeef' }),
+  null
+);
+
+// Docs wraps Body under a tab-like parent with getChildIndex. Paths must stay
+// body-relative or replace/delete report "document changed".
+const tabParent = {
+  getChildIndex(child) { return child === body ? 0 : -1; }
+};
+body.getParent = () => tabParent;
+assert.equal(context.elementPath_(body.images[0]), '0');
+assert.equal(context.elementAtPath_('0'), body.images[0]);
+assert.equal(
+  context.findEquationTarget_(0, {
+    path: context.elementPath_(body.images[0]),
+    digest: context.imageDigest_(body.images[0])
+  }),
+  body.images[0]
+);
+body.getParent = () => null;
+
 const oldImage = body.images[0];
 const staleTarget = context.replaceEquationImage(
   0,
@@ -264,6 +302,7 @@ assert.equal(replaced.success, true);
 assert.equal(body.images.length, 1);
 assert.notEqual(body.images[0], oldImage);
 assert.equal(body.images[0].altDescription, 'y equals the square root of x plus 3');
+assert.equal(body.images[0].altTitle, '');
 listed = context.listEquationImages();
 assert.equal(listed[0].latex, 'y=\\sqrt{x+3}');
 
@@ -275,6 +314,17 @@ assert.equal(deleted.success, true);
 assert.equal(body.images.length, 0);
 context.listEquationImages();
 assert.equal(values.size, 0);
+
+// A/B: speech in title, empty description.
+context.ALT_SPEECH_FIELD = 'title';
+const titled = context.insertEquationImage(payload('a=b', 'a equals b', 'title layout'));
+assert.equal(titled.success, true);
+assert.equal(body.images[0].altTitle, 'a equals b');
+assert.equal(body.images[0].altDescription, '');
+assert.equal(context.listEquationImages()[0].speech, 'a equals b');
+context.deleteEquationImage(0);
+context.listEquationImages();
+context.ALT_SPEECH_FIELD = 'description';
 
 // Identical equations share an image digest. Removing one must not remove the
 // editing metadata needed by the other copy.

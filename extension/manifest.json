@@ -1,16 +1,19 @@
 {
   "manifest_version": 3,
   "name": "LaTeX for Google Docs",
-  "version": "2.12.4",
+  "version": "2.12.5",
   "description": "Accessible LaTeX equation editor for Google Docs with keyboard and screen reader support.",
   "permissions": [
     "storage",
     "activeTab",
     "clipboardWrite",
-    "tts"
+    "tts",
+    "webNavigation"
   ],
   "host_permissions": [
-    "https://docs.google.com/document/*"
+    "https://docs.google.com/document/*",
+    "https://docs.google.com/*",
+    "https://*.googleusercontent.com/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js"
@@ -25,6 +28,15 @@
       "js": ["content/page-main.js"],
       "run_at": "document_start",
       "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://docs.google.com/*",
+        "https://*.googleusercontent.com/*"
+      ],
+      "js": ["content/addon-focus-bridge.js"],
+      "run_at": "document_start",
+      "all_frames": true
     },
     {
       "matches": ["https://docs.google.com/document/*"],

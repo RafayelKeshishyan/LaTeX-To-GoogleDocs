@@ -42,13 +42,33 @@ function showSidebar_(selectedAction) {
   var template = HtmlService.createTemplateFromFile('Sidebar');
   template.selectedAction = selectedAction || '';
   var html = template.evaluate()
-    .setTitle('LaTeX for Google Docs')
+    .setTitle('Equation Editor')
     .setWidth(320);
   DocumentApp.getUi().showSidebar(html);
 }
 
 var ACCESSIBLE_MATH_TITLE = 'Equation';
 var EQUATION_PROPERTY_PREFIX = 'accessible_math_';
+/**
+ * Where spoken math is stored for screen readers.
+ *   'description' — description = speech, title empty (preferred for NVDA in Docs)
+ *   'title'       — title = speech, description empty
+ * Opening All equations / Refresh rewrites older double-field images.
+ */
+var ALT_SPEECH_FIELD = 'description';
+
+/** Per-request cache so one image is not SHA-hashed repeatedly. */
+var digestCache_ = null;
+
+function withDigestCache_(fn) {
+  var previous = digestCache_;
+  digestCache_ = previous || {};
+  try {
+    return fn();
+  } finally {
+    digestCache_ = previous;
+  }
+}
 
 /**
  * Insert a rendered PNG at the user's Docs cursor and attach real image alt
@@ -138,75 +158,103 @@ function moveCursorAfterImage_(doc, image) {
 
 /** List accessible equation images in document order. */
 function listEquationImages() {
-  var images = getEquationImages_();
-  cleanupEquationMetadata_(images);
-  return images.map(function(image, index) {
-    return equationRecord_(image, index);
+  return withDigestCache_(function() {
+    var images = getEquationImages_();
+    cleanupEquationMetadata_(images);
+    // Rewrite old title+description doubles so NVDA/JAWS do not hear the math twice.
+    images.forEach(repairEquationAltText_);
+    return images.map(function(image, index) {
+      return equationRecord_(image, index);
+    });
   });
+}
+
+/**
+ * Put spoken math in only one alt field (see ALT_SPEECH_FIELD).
+ * Call after deploy so older “Title: Equation + description” images get fixed.
+ */
+function repairEquationAltText_(image) {
+  var metadata = readEquationMetadata_(image);
+  var speech =
+    (metadata && metadata.speech) ||
+    image.getAltDescription() ||
+    (image.getAltTitle() !== ACCESSIBLE_MATH_TITLE ? image.getAltTitle() : '') ||
+    '';
+  speech = String(speech || '').trim();
+  if (!speech) return false;
+
+  var title = String(image.getAltTitle() || '');
+  var description = String(image.getAltDescription() || '');
+  var wantsTitle = ALT_SPEECH_FIELD === 'title';
+  var alreadyOk = wantsTitle
+    ? title === speech && !description
+    : !title && description === speech;
+  if (alreadyOk) return false;
+
+  configureEquationImage_(image, {
+    speech: speech,
+    width: image.getWidth(),
+    height: image.getHeight()
+  });
+  return true;
 }
 
 /** Return the add-on equation image selected or immediately next to the cursor. */
 function getSelectedEquation() {
-  var doc = DocumentApp.getActiveDocument();
-  var selection = doc.getSelection();
-  var selectedImages = [];
-  if (selection) {
-    var rangeElements = selection.getRangeElements
-      ? selection.getRangeElements()
-      : selection.getSelectedElements();
-    selectedImages = rangeElements.map(function(rangeElement) {
-      return rangeElement.getElement();
-    }).filter(isEquationImage_);
-  }
-
-  if (selectedImages.length > 1) {
-    return {
-      success: false,
-      error: 'Select only one equation image.'
-    };
-  }
-
-  var targetImage = selectedImages.length === 1
-    ? selectedImages[0]
-    : equationAdjacentToCursor_(doc.getCursor());
-  if (targetImage && targetImage.error) return targetImage;
-  if (!targetImage) {
-    return {
-      success: false,
-      error: 'Put the document cursor immediately before or after one equation, then try again.'
-    };
-  }
-
-  var selectedPath = elementPath_(targetImage);
-  var images = getEquationImages_();
-  var selectedIndex = -1;
-  for (var index = 0; index < images.length; index += 1) {
-    if (elementPath_(images[index]) === selectedPath) {
-      selectedIndex = index;
-      break;
+  return withDigestCache_(function() {
+    var doc = DocumentApp.getActiveDocument();
+    var selection = doc.getSelection();
+    var selectedImages = [];
+    if (selection) {
+      var rangeElements = selection.getRangeElements
+        ? selection.getRangeElements()
+        : selection.getSelectedElements();
+      selectedImages = rangeElements.map(function(rangeElement) {
+        return rangeElement.getElement();
+      }).filter(isEquationImage_);
     }
-  }
-  if (selectedIndex < 0) {
-    return { success: false, error: 'The equation at the cursor could not be located.' };
-  }
 
-  var image = images[selectedIndex];
-  var metadata = readEquationMetadata_(image);
-  if (!metadata || !metadata.latex) {
-    return {
-      success: false,
-      error: 'This equation has alt text but no saved LaTeX to edit.'
-    };
-  }
+    if (selectedImages.length > 1) {
+      return {
+        success: false,
+        error: 'Select only one equation image.'
+      };
+    }
 
-  return { success: true, equation: equationRecord_(image, selectedIndex) };
+    var targetImage = selectedImages.length === 1
+      ? selectedImages[0]
+      : equationAdjacentToCursor_(doc.getCursor());
+    if (targetImage && targetImage.error) return targetImage;
+    if (!targetImage) {
+      return {
+        success: false,
+        error: 'Put the document cursor immediately before or after one equation, then try again.'
+      };
+    }
+
+    var metadata = readEquationMetadata_(targetImage);
+    if (!metadata || !metadata.latex) {
+      return {
+        success: false,
+        error: 'This equation has alt text but no saved source to edit.'
+      };
+    }
+
+    // Do not scan every body image here — replace/delete use target path+digest.
+    // Index is only a display hint when the list is closed.
+    return { success: true, equation: equationRecord_(targetImage, 0) };
+  });
 }
 
 function isEquationImage_(element) {
-  return Boolean(element &&
-    typeof element.getType === 'function' &&
-    element.getType() === DocumentApp.ElementType.INLINE_IMAGE &&
-    element.getAltTitle() === ACCESSIBLE_MATH_TITLE);
+  if (!(element &&
+      typeof element.getType === 'function' &&
+      element.getType() === DocumentApp.ElementType.INLINE_IMAGE)) {
+    return false;
+  }
+  // Legacy marker, or any image we stored LaTeX for (title/description A/B layouts).
+  if (element.getAltTitle() === ACCESSIBLE_MATH_TITLE) return true;
+  return Boolean(readEquationMetadata_(element));
 }
 
 /** Find one add-on equation immediately before or after the Docs cursor. */
@@ -260,10 +308,15 @@ function equationAdjacentToCursor_(cursor) {
 
 function equationRecord_(image, index) {
   var metadata = readEquationMetadata_(image);
+  var spoken =
+    (metadata && metadata.speech) ||
+    image.getAltDescription() ||
+    image.getAltTitle() ||
+    'equation';
   return {
     index: index,
     latex: metadata ? metadata.latex : '',
-    speech: metadata ? metadata.speech : (image.getAltDescription() || 'equation'),
+    speech: spoken,
     title: image.getAltTitle() || ACCESSIBLE_MATH_TITLE,
     target: {
       path: elementPath_(image),
@@ -273,9 +326,17 @@ function equationRecord_(image, index) {
 }
 
 function elementPath_(element) {
+  var body = null;
+  try {
+    body = getActiveBody_();
+  } catch (err) {
+    body = null;
+  }
   var path = [];
   var current = element;
-  while (current && typeof current.getParent === 'function') {
+  // Paths are relative to the active body so elementAtPath_ can resolve them.
+  // Walking past Body (e.g. into a tab wrapper) made replace/delete fail in Docs.
+  while (current && current !== body && typeof current.getParent === 'function') {
     var parent = current.getParent();
     if (!parent || typeof parent.getChildIndex !== 'function') break;
     path.unshift(parent.getChildIndex(current));
@@ -284,18 +345,57 @@ function elementPath_(element) {
   return path.join('.');
 }
 
-function findEquationTarget_(index, expectedTarget) {
-  var images = getEquationImages_();
-  if (!expectedTarget || !expectedTarget.path || !expectedTarget.digest) {
-    return images[Number(index)] || null;
-  }
-  for (var imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
-    if (elementPath_(images[imageIndex]) === expectedTarget.path &&
-        imageDigest_(images[imageIndex]) === expectedTarget.digest) {
-      return images[imageIndex];
+/** Resolve a saved path like "3.1" from the active body without hashing images. */
+function elementAtPath_(pathString) {
+  var parts = String(pathString || '').split('.');
+  if (!parts.length || parts[0] === '') return null;
+  var current = getActiveBody_();
+  for (var i = 0; i < parts.length; i += 1) {
+    var childIndex = Number(parts[i]);
+    if (!current ||
+        typeof current.getChild !== 'function' ||
+        !isFinite(childIndex) ||
+        childIndex < 0) {
+      return null;
+    }
+    if (typeof current.getNumChildren === 'function' &&
+        childIndex >= current.getNumChildren()) {
+      return null;
+    }
+    try {
+      current = current.getChild(childIndex);
+    } catch (err) {
+      return null;
     }
   }
-  return null;
+  return current;
+}
+
+function findEquationTarget_(index, expectedTarget) {
+  return withDigestCache_(function() {
+    var images;
+    if (expectedTarget && expectedTarget.path) {
+      var byPath = elementAtPath_(expectedTarget.path);
+      if (byPath && isEquationImage_(byPath) &&
+          (!expectedTarget.digest || imageDigest_(byPath) === expectedTarget.digest)) {
+        return byPath;
+      }
+
+      // Fallback: same path+digest scan as before (handles odd structures).
+      images = getEquationImages_();
+      for (var i = 0; i < images.length; i += 1) {
+        if (elementPath_(images[i]) === expectedTarget.path &&
+            (!expectedTarget.digest ||
+              imageDigest_(images[i]) === expectedTarget.digest)) {
+          return images[i];
+        }
+      }
+      return null;
+    }
+
+    images = getEquationImages_();
+    return images[Number(index)] || null;
+  });
 }
 
 /** Replace one add-on equation image while keeping its document position. */
@@ -360,9 +460,7 @@ function getActiveBody_() {
 
 function getEquationImages_() {
   var images = getActiveBody_().getImages() || [];
-  return images.filter(function(image) {
-    return image.getAltTitle() === ACCESSIBLE_MATH_TITLE;
-  });
+  return images.filter(isEquationImage_);
 }
 
 function validateImagePayload_(payload) {
@@ -370,7 +468,7 @@ function validateImagePayload_(payload) {
   var latex = String(payload.latex || '').trim();
   var speech = String(payload.speech || '').trim();
   var dataUrl = String(payload.dataUrl || '');
-  if (!latex) return { success: false, ok: false, error: 'Type LaTeX first.' };
+  if (!latex) return { success: false, ok: false, error: 'Type an equation first.' };
   if (!speech) return { success: false, ok: false, error: 'The equation needs an alt description.' };
   if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl)) {
     return { success: false, ok: false, error: 'The equation image was not valid PNG data.' };
@@ -399,23 +497,45 @@ function pngBlobFromDataUrl_(dataUrl) {
 }
 
 function configureEquationImage_(image, parts) {
+  if (ALT_SPEECH_FIELD === 'title') {
+    image
+      .setAltTitle(parts.speech)
+      .setAltDescription('');
+  } else {
+    // Default A/B option: speech only in description (empty title).
+    image
+      .setAltTitle('')
+      .setAltDescription(parts.speech);
+  }
   image
-    .setAltTitle(ACCESSIBLE_MATH_TITLE)
-    .setAltDescription(parts.speech)
     .setWidth(Math.round(parts.width))
     .setHeight(Math.round(parts.height));
 }
 
 function imageDigest_(imageOrBlob) {
+  var cacheKey = null;
+  if (digestCache_ &&
+      imageOrBlob &&
+      typeof imageOrBlob.getParent === 'function' &&
+      typeof imageOrBlob.getBlob === 'function') {
+    cacheKey = elementPath_(imageOrBlob);
+    if (cacheKey && Object.prototype.hasOwnProperty.call(digestCache_, cacheKey)) {
+      return digestCache_[cacheKey];
+    }
+  }
+
   var blob = imageOrBlob.getBlob ? imageOrBlob.getBlob() : imageOrBlob;
   var digest = Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256,
     blob.getBytes()
   );
-  return digest.map(function(value) {
+  var hex = digest.map(function(value) {
     var byte = value < 0 ? value + 256 : value;
     return ('0' + byte.toString(16)).slice(-2);
   }).join('');
+
+  if (cacheKey && digestCache_) digestCache_[cacheKey] = hex;
+  return hex;
 }
 
 function saveEquationMetadata_(image, latex, speech) {

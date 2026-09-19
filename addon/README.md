@@ -12,17 +12,15 @@ For example, `y=x^2` is inserted as a visual equation whose alt description is �
 ## What this version is designed to improve
 
 - NVDA and JAWS encounter a normal image with a short alt description in the document.
-- The visual KaTeX preview is hidden from the sidebar accessibility tree, avoiding its noisy internal markup.
-- The sidebar exposes the natural wording before insertion and has a **Read wording** button.
-- By default, each insertion advances the saved Docs cursor to a new paragraph, so consecutive equations appear one below another.
-- The placement checkbox also supports inline answers inside teacher-created blanks.
-- Equations inserted by the add-on can be loaded, replaced in place, or deleted from the sidebar.
-- A student can put the Docs text cursor immediately before or after an equation and use **Edit equation at cursor** or **Delete equation at cursor...**. Mouse-based image selection is optional.
-- The sidebar can remain open for the entire assignment. **Return to document** moves focus back to Docs.
-- If Chrome extension version 2.12.4 is permitted, **Alt+=** returns focus from Docs to the already-open add-on sidebar; F2 remains an optional fallback. When the cursor is next to an add-on equation, its natural wording is announced and its LaTeX loads selected for editing; otherwise the field stays in new-equation mode. While editing, `Ctrl+Shift+Delete` starts the confirmed deletion workflow. Without the helper extension, Google Docs provides no dependable shortcut into a custom Apps Script sidebar.
-- Selected-image deletion uses a two-step confirmation, and replacement verifies the image identity before changing the document.
-- Original LaTeX is stored in document properties so it can be edited later.
-- KaTeX `\ce{...}` formulas and expanded Algebra 2, introductory calculus, physics, and chemistry speech are supported for basic classroom notation.
+- Spoken math uses **one** alt field (description by default; see `ALT_SPEECH_FIELD`). Refresh silently rewrites older double-field images.
+- The sidebar is built around one loop: type → **Alt+Enter** → **Return to document** → **Alt+=** to edit → **Ctrl+Shift+Delete** to delete.
+- The numbered equation list and practice examples stay collapsed under **All equations** / **Practice examples**.
+- The visual KaTeX preview is hidden from the sidebar accessibility tree.
+- Math wording is shown before insertion; **Read wording** is optional.
+- Placement checkbox: new line (default) or inline blank.
+- Original LaTeX is stored in document properties so equations can be edited later.
+- KaTeX `\ce{...}` and expanded Algebra 2 / calculus / physics / chemistry speech for basic classroom notation.
+- With Chrome extension **2.12.5+**, **Alt+=** focuses the open add-on sidebar from Docs. Without the extension, open the sidebar from the Extensions menu.
 
 ## Important limitation
 

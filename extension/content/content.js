@@ -21,27 +21,69 @@
     });
   }
 
+  function postFocusRequestToFrames(win, message, depth = 0) {
+    if (!win || depth > 8) return;
+    try {
+      win.postMessage(message, '*');
+    } catch {
+      /* Cross-origin or detached window. */
+    }
+    let frames;
+    try {
+      frames = win.document?.querySelectorAll('iframe') || [];
+    } catch {
+      return;
+    }
+    frames.forEach((frame) => {
+      if (frame.id === FRAME_ID) return;
+      try {
+        if (frame.contentWindow) {
+          postFocusRequestToFrames(frame.contentWindow, message, depth + 1);
+        }
+      } catch {
+        /* Nested cross-origin frame: top-level post above is enough for that window. */
+      }
+    });
+  }
+
+  function findIframeForWindow(win) {
+    const search = (doc) => {
+      if (!doc) return null;
+      for (const iframe of doc.querySelectorAll('iframe')) {
+        try {
+          if (iframe.contentWindow === win) return iframe;
+          const nested = search(iframe.contentDocument);
+          if (nested) return nested;
+        } catch {
+          /* Cross-origin: cannot search inside. */
+        }
+      }
+      return null;
+    };
+    return search(document);
+  }
+
   function requestAccessibleAddonFocus() {
     if (addonFocusRequestId) return true;
     const requestId = `accessible-addon-${Date.now()}-${Math.random()}`;
     addonFocusRequestId = requestId;
-    const frames = Array.from(document.querySelectorAll('iframe')).filter(
-      (frame) => frame.id !== FRAME_ID && frame.contentWindow
-    );
-    frames.forEach((frame) => {
-      frame.contentWindow.postMessage(
-        { type: 'ACCESSIBLE_EQUATIONS_FOCUS_REQUEST', requestId },
-        '*'
-      );
-    });
+    const message = { type: 'ACCESSIBLE_EQUATIONS_FOCUS_REQUEST', requestId };
+    postFocusRequestToFrames(window, message);
+    try {
+      chrome.runtime.sendMessage({ action: 'broadcastAddonFocus', requestId }, () => {
+        void chrome.runtime.lastError;
+      });
+    } catch {
+      /* Context invalidated; iframe broadcast above may still reach a same-tree sidebar. */
+    }
     setTimeout(() => {
       if (addonFocusRequestId !== requestId) return;
       addonFocusRequestId = null;
       DocumentBridge.announce(
-        'Accessible Equation Editor is not open. Open it once from the Extensions menu, then press F2.'
+        'The add-on sidebar did not respond. Keep Accessible Equation Images open, click in the document, then press Alt+Equals again.'
       );
-    }, 700);
-    return frames.length > 0;
+    }, 1200);
+    return true;
   }
 
   function triggerInsertInPanel(options = {}) {
@@ -199,20 +241,38 @@
         event.data.requestId === addonFocusRequestId
       ) {
         addonFocusRequestId = null;
-        const frame = Array.from(document.querySelectorAll('iframe')).find(
-          (candidate) => candidate.contentWindow === event.source
-        );
+        const sourceWin = event.source;
+        const frame = sourceWin ? findIframeForWindow(sourceWin) : null;
         if (frame) {
-          frame.focus();
           try {
-            frame.contentWindow.focus();
+            frame.focus();
           } catch {
-            /* The follow-up message still focuses the input inside the frame. */
+            /* Follow-up postMessage still targets the sidebar window. */
           }
-          frame.contentWindow.postMessage(
-            { type: 'ACCESSIBLE_EQUATIONS_FOCUS_INPUT', requestId: event.data.requestId },
+        }
+        try {
+          sourceWin?.focus?.();
+        } catch {
+          /* Some sandbox frames reject scripted focus. */
+        }
+        try {
+          sourceWin?.postMessage(
+            {
+              type: 'ACCESSIBLE_EQUATIONS_FOCUS_INPUT',
+              requestId: event.data.requestId
+            },
             '*'
           );
+        } catch {
+          if (frame?.contentWindow) {
+            frame.contentWindow.postMessage(
+              {
+                type: 'ACCESSIBLE_EQUATIONS_FOCUS_INPUT',
+                requestId: event.data.requestId
+              },
+              '*'
+            );
+          }
         }
       }
       if (event.data?.type === 'LATEX_GDOCS_READ_EQUATION') {

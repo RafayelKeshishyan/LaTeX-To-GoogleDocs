@@ -57,6 +57,16 @@
       background: #f8f9fa;
     }
     .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .actions.stack { flex-direction: column; }
+    .actions.quiet { margin-top: 6px; }
+    .actions.quiet button {
+      min-height: 32px;
+      padding: 5px 8px;
+      font-weight: 500;
+      background: #fff;
+      color: #5f6368;
+    }
+    .actions.danger-row { margin-top: 18px; }
     button {
       min-height: 38px;
       padding: 7px 10px;
@@ -67,7 +77,7 @@
       font-weight: 600;
     }
     button:disabled { cursor: wait; opacity: .65; }
-    .actions button { flex: 1; }
+    .actions button { flex: 1; width: 100%; }
     .primary { background: #1a73e8; color: #fff; }
     .secondary { border-color: #dadce0; background: #f1f3f4; color: #202124; }
     .danger { border-color: #f3c7c4; background: #fff; color: #b3261e; }
@@ -108,58 +118,61 @@
 <body data-selected-action="<?= selectedAction ?>">
   <main>
     <h1>Accessible Equation Editor</h1>
-    <p class="subtitle">Type LaTeX, then insert an equation image with spoken alt text.</p>
-    <p class="hint"><strong>Keep this sidebar open while you work.</strong> Use Return to document, put the cursor beside an equation, then press Alt+Equals to return here and edit it. F2 is an optional fallback.</p>
-    <button class="secondary template-button" id="return-to-document-button" type="button">
-      Return to document
-    </button>
+    <p class="hint">
+      Alt+Enter inserts · Esc returns to the Doc · Alt+Equals edits ·
+      Ctrl+Shift+Delete deletes (twice).
+    </p>
 
-    <label for="latex-input">Linear LaTeX</label>
-    <textarea id="latex-input" spellcheck="false" aria-describedby="input-help"
-      aria-label="Linear LaTeX. New equation."
-      placeholder="Example: y=\sqrt{x + 3}"></textarea>
-    <p id="input-help" class="hint">Press Alt+Enter to insert. Enter alone starts a new line.</p>
+    <label for="latex-input">Equation</label>
+    <textarea id="latex-input" spellcheck="false"
+      aria-label="New equation."></textarea>
+    <p class="hint" aria-hidden="true">Alt+Enter inserts or replaces. Enter alone starts a new line.</p>
 
-    <fieldset id="placement-options">
-      <legend>After insertion</legend>
-      <label class="checkbox-label" for="new-line-after">
-        <input id="new-line-after" type="checkbox" checked>
-        <span>Put the next equation on a new line. Uncheck this when filling an inline answer blank.</span>
-      </label>
-    </fieldset>
+    <p class="speech-box"><strong>Math wording:</strong> <span id="speech-preview">empty equation</span></p>
 
     <div class="visual-preview" aria-hidden="true">
       <div id="render-surface"></div>
     </div>
     <p id="preview-error" role="alert"></p>
 
-    <p class="speech-box"><strong>Math wording:</strong> <span id="speech-preview">empty equation</span></p>
-
-    <div class="actions">
-      <button class="primary" id="insert-button" type="button">Insert at cursor</button>
-      <button class="secondary" id="read-button" type="button">Read wording</button>
+    <div id="placement-options" class="checkbox-label" style="margin: 8px 0 10px;">
+      <label class="checkbox-label" for="new-line-after">
+        <input id="new-line-after" type="checkbox" checked
+          aria-label="New line after insert">
+        <span>New line after insert</span>
+      </label>
     </div>
-    <div class="actions">
+
+    <div class="actions stack">
+      <button class="primary" id="insert-button" type="button">Insert at cursor</button>
+      <button class="secondary" id="return-to-document-button" type="button"
+        title="Esc">Return to document</button>
+    </div>
+    <div class="actions quiet">
       <button class="secondary" id="clear-button" type="button">Clear</button>
+      <button class="secondary" id="read-button" type="button">Read wording</button>
       <button class="secondary" id="cancel-edit-button" type="button" hidden>Cancel edit</button>
+    </div>
+    <div class="actions danger-row">
+      <button class="danger" id="delete-selected-button" type="button">
+        Delete equation at cursor
+      </button>
     </div>
 
     <p id="status" role="status" aria-live="assertive" aria-atomic="true"></p>
 
-    <section aria-labelledby="saved-heading">
+    <details id="all-equations">
+      <summary>All equations</summary>
       <div class="section-heading">
-        <h2 id="saved-heading">Equations in document</h2>
+        <p class="hint">Backup list if the cursor is not next to the equation you want.</p>
         <button class="secondary small-button" id="refresh-button" type="button">Refresh</button>
       </div>
       <button class="secondary template-button" id="edit-selected-button" type="button">
         Edit equation at document cursor
       </button>
-      <button class="danger template-button" id="delete-selected-button" type="button">
-        Delete equation at document cursor
-      </button>
       <p id="empty-list" class="hint">No accessible equation images yet.</p>
       <ol id="equation-list"></ol>
-    </section>
+    </details>
 
     <details>
       <summary>Practice examples</summary>
@@ -190,6 +203,7 @@
     const equationList = document.getElementById('equation-list');
     const emptyList = document.getElementById('empty-list');
     const templateList = document.getElementById('template-list');
+    const allEquationsDetails = document.getElementById('all-equations');
     let editingIndex = null;
     let editingTarget = null;
     let pendingSelectedDelete = null;
@@ -421,22 +435,22 @@
         });
         return true;
       } catch (error) {
-        previewError.textContent = 'LaTeX error: ' + error.message;
+        previewError.textContent = 'Equation error: ' + error.message;
         return false;
       }
     }
 
     async function buildImagePayload() {
       const latex = latexInput.value.trim();
-      if (!latex) throw new Error('Type LaTeX first.');
-      if (!updatePreview()) throw new Error('Correct the LaTeX error before inserting.');
+      if (!latex) throw new Error('Type an equation first.');
+      if (!updatePreview()) throw new Error('Correct the equation error before inserting.');
       if (typeof html2canvas !== 'function') throw new Error('The image renderer did not load. Reopen the sidebar.');
       await document.fonts.ready;
       const box = renderSurface.getBoundingClientRect();
       const canvas = await html2canvas(renderSurface, {
         backgroundColor: '#ffffff',
         logging: false,
-        scale: 3,
+        scale: 2,
         useCORS: true
       });
       return {
@@ -468,10 +482,16 @@
               return;
             }
             const action = editingIndex === null ? 'Inserted' : 'Replaced';
+            const wasInsert = editingIndex === null;
             setStatus(action + ': ' + payload.speech, 'success');
-            stopEditing(false);
-            refreshEquations();
-            latexInput.focus();
+            stopEditing(wasInsert);
+            refreshEquationsIfOpen();
+            if (wasInsert) {
+              // Keep "Inserted: …" as the live status; only move Docs focus.
+              google.script.host.editor.focus();
+            } else {
+              latexInput.focus();
+            }
           })
           .withFailureHandler(function (error) {
             setBusy(false);
@@ -488,7 +508,7 @@
     function stopEditing(clearInput) {
       editingIndex = null;
       editingTarget = null;
-      latexInput.setAttribute('aria-label', 'Linear LaTeX. New equation.');
+      latexInput.setAttribute('aria-label', 'New equation.');
       insertButton.textContent = 'Insert at cursor';
       cancelEditButton.hidden = true;
       newLineAfter.disabled = false;
@@ -503,14 +523,14 @@
       editingIndex = equation.index;
       editingTarget = equation.target || null;
       latexInput.value = equation.latex || '';
+      // Announce via focus label only — avoid status + focus double speech.
       latexInput.setAttribute('aria-label',
-        'Linear LaTeX. Editing equation: ' + equation.speech + '.');
+        'Editing equation: ' + equation.speech + '. Selected.');
       updatePreview();
       insertButton.textContent = 'Replace equation';
       cancelEditButton.hidden = false;
       newLineAfter.disabled = true;
-      setStatus('Editing equation ' + (equation.index + 1) + ': ' + equation.speech +
-        '. The LaTeX is selected and ready to edit.');
+      setStatus('');
       latexInput.focus();
       latexInput.select();
     }
@@ -526,7 +546,7 @@
           }
           stopEditing(false);
           setStatus('Equation ' + number + ' deleted.', 'success');
-          refreshEquations();
+          refreshEquationsIfOpen();
         })
         .withFailureHandler(function (error) { setStatus(error.message, 'error'); })
         .deleteEquationImage(equation.index, equation.target || null);
@@ -570,9 +590,17 @@
 
     function refreshEquations() {
       google.script.run
-        .withSuccessHandler(renderEquationList)
-        .withFailureHandler(function (error) { setStatus(error.message || 'Could not load equations.', 'error'); })
+        .withSuccessHandler(function (equations) {
+          renderEquationList(equations);
+        })
+        .withFailureHandler(function (error) {
+          setStatus(error.message || 'Could not load equations.', 'error');
+        })
         .listEquationImages();
+    }
+
+    function refreshEquationsIfOpen() {
+      if (allEquationsDetails && allEquationsDetails.open) refreshEquations();
     }
 
     function loadSelectedEquation() {
@@ -595,7 +623,7 @@
     }
 
     function focusEditorForDocumentCursor() {
-      setStatus('Checking the document cursor.');
+      // No intermediate status — it gets cut off when focus speech starts.
       google.script.run
         .withSuccessHandler(function (result) {
           if (result && result.success) {
@@ -603,14 +631,18 @@
             return;
           }
           stopEditing(false);
-          setStatus('New equation mode. ' +
-            ((result && result.error) || 'No equation is next to the document cursor.'));
+          const detail = (result && result.error) ||
+            'No equation is next to the document cursor.';
+          latexInput.setAttribute('aria-label', 'New equation. ' + detail);
+          setStatus('');
           latexInput.focus();
         })
         .withFailureHandler(function (error) {
           stopEditing(false);
-          setStatus((error.message || 'The document cursor could not be checked.') +
-            ' New equation mode.', 'error');
+          latexInput.setAttribute('aria-label',
+            'New equation. ' +
+            (error.message || 'The document cursor could not be checked.'));
+          setStatus('');
           latexInput.focus();
         })
         .getSelectedEquation();
@@ -618,7 +650,7 @@
 
     function resetSelectedDelete() {
       pendingSelectedDelete = null;
-      deleteSelectedButton.textContent = 'Delete equation at document cursor';
+      deleteSelectedButton.textContent = 'Delete equation at cursor';
     }
 
     function prepareOrDeleteSelectedEquation() {
@@ -677,6 +709,11 @@
       });
     }
 
+    function returnToDocument() {
+      setStatus('Returning to the Google Docs editing area.');
+      google.script.host.editor.focus();
+    }
+
     latexInput.addEventListener('input', updatePreview);
     latexInput.addEventListener('keydown', function (event) {
       if (event.altKey && !event.shiftKey && event.key === 'Enter') {
@@ -685,6 +722,11 @@
       }
     });
     document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        returnToDocument();
+        return;
+      }
       if (event.ctrlKey && event.shiftKey && event.key === 'Delete') {
         event.preventDefault();
         prepareOrDeleteSelectedEquation();
@@ -704,30 +746,47 @@
       setStatus('Editing canceled.');
       latexInput.focus();
     });
-    returnToDocumentButton.addEventListener('click', function () {
-      setStatus('Returning to the Google Docs editing area.');
-      google.script.host.editor.focus();
-    });
+    returnToDocumentButton.addEventListener('click', returnToDocument);
     refreshButton.addEventListener('click', refreshEquations);
+    if (allEquationsDetails) {
+      allEquationsDetails.addEventListener('toggle', function () {
+        if (allEquationsDetails.open) refreshEquations();
+      });
+    }
     editSelectedButton.addEventListener('click', loadSelectedEquation);
     deleteSelectedButton.addEventListener('click', prepareOrDeleteSelectedEquation);
 
     window.addEventListener('message', function (event) {
-      if (event.origin !== 'https://docs.google.com') return;
-      if (event.data && event.data.type === 'ACCESSIBLE_EQUATIONS_FOCUS_REQUEST') {
-        event.source.postMessage({
+      if (!event.data || typeof event.data !== 'object') return;
+      var fromDocs = event.origin === 'https://docs.google.com';
+      var fromSelf = event.origin === window.location.origin;
+      if (!fromDocs && !fromSelf) return;
+
+      if (event.data.type === 'ACCESSIBLE_EQUATIONS_FOCUS_REQUEST') {
+        var ready = {
           type: 'ACCESSIBLE_EQUATIONS_FOCUS_READY',
           requestId: event.data.requestId
-        }, event.origin);
+        };
+        // Always notify the Docs top window so the extension can finish the handoff,
+        // even when the request was injected inside this nested sidebar frame.
+        try {
+          window.top.postMessage(ready, 'https://docs.google.com');
+        } catch (err) {
+          try {
+            event.source.postMessage(ready, fromDocs ? event.origin : '*');
+          } catch (err2) {
+            /* The extension timeout will report that the sidebar did not respond. */
+          }
+        }
         return;
       }
-      if (event.data && event.data.type === 'ACCESSIBLE_EQUATIONS_FOCUS_INPUT') {
+
+      if (event.data.type === 'ACCESSIBLE_EQUATIONS_FOCUS_INPUT') {
         focusEditorForDocumentCursor();
       }
     });
 
     updatePreview();
-    refreshEquations();
     google.script.run
       .withSuccessHandler(renderTemplates)
       .withFailureHandler(function () { templateList.textContent = 'Examples could not be loaded.'; })

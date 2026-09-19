@@ -86,6 +86,44 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg.action === 'broadcastAddonFocus') {
+    const tabId = sender.tab?.id;
+    const requestId = msg.requestId;
+    if (!tabId || !requestId) {
+      sendResponse({ ok: false, error: 'Missing tab or request id.' });
+      return true;
+    }
+
+    chrome.webNavigation.getAllFrames({ tabId }, (frames) => {
+      if (chrome.runtime.lastError || !frames?.length) {
+        chrome.tabs
+          .sendMessage(tabId, { action: 'addonFocusRequest', requestId })
+          .catch(() => {});
+        sendResponse({
+          ok: false,
+          error: chrome.runtime.lastError?.message || 'No frames'
+        });
+        return;
+      }
+
+      let sent = 0;
+      frames.forEach((frame) => {
+        chrome.tabs
+          .sendMessage(
+            tabId,
+            { action: 'addonFocusRequest', requestId },
+            { frameId: frame.frameId }
+          )
+          .then(() => {
+            sent += 1;
+          })
+          .catch(() => {});
+      });
+      sendResponse({ ok: true, frames: frames.length, sent });
+    });
+    return true;
+  }
+
   if (msg.action === 'openSidePanel') {
     const tabId = sender.tab?.id;
     if (!tabId) {

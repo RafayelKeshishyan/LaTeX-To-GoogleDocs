@@ -9,19 +9,39 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'u
 const worker = fs.readFileSync(path.join(root, 'background', 'service-worker.js'), 'utf8');
 const content = fs.readFileSync(path.join(root, 'content', 'content.js'), 'utf8');
 const pageMain = fs.readFileSync(path.join(root, 'content', 'page-main.js'), 'utf8');
+const bridge = fs.readFileSync(path.join(root, 'content', 'addon-focus-bridge.js'), 'utf8');
 const addon = fs.readFileSync(path.join(root, '..', 'addon', 'Sidebar.html'), 'utf8');
 
-assert.equal(manifest.version, '2.12.4');
+assert.equal(manifest.version, '2.12.5');
+assert.ok(manifest.permissions.includes('webNavigation'));
+assert.ok(
+  manifest.host_permissions.some((pattern) => pattern.includes('googleusercontent.com'))
+);
+assert.ok(
+  manifest.content_scripts.some(
+    (entry) =>
+      entry.all_frames === true &&
+      entry.js.includes('content/addon-focus-bridge.js')
+  )
+);
 assert.equal(manifest.commands['insert-equation'].suggested_key, undefined);
 assert.match(manifest.commands['insert-equation'].description, /Accessible Equation Editor/);
 assert.match(worker, /action: 'focusAccessibleAddon'/);
+assert.match(worker, /broadcastAddonFocus/);
+assert.match(worker, /webNavigation\.getAllFrames/);
+assert.match(bridge, /addonFocusRequest/);
+assert.match(bridge, /ACCESSIBLE_EQUATIONS_FOCUS_REQUEST/);
 assert.match(content, /ACCESSIBLE_EQUATIONS_FOCUS_REQUEST/);
 assert.match(content, /ACCESSIBLE_EQUATIONS_FOCUS_READY/);
 assert.match(content, /ACCESSIBLE_EQUATIONS_FOCUS_INPUT/);
+assert.match(content, /broadcastAddonFocus/);
+assert.match(content, /postFocusRequestToFrames/);
+assert.match(content, /findIframeForWindow/);
 assert.match(content, /e\.key === 'F2'/);
 assert.match(content, /const isAltEquals/);
 assert.match(content, /requestAccessibleAddonFocus\(\)/);
 assert.match(content, /LATEX_GDOCS_ACCESSIBLE_ADDON_HOTKEY/);
+assert.match(content, /add-on sidebar did not respond/);
 assert.match(pageMain, /function relayAccessibleAddonHotkey\(event\)/);
 assert.match(pageMain, /event\.key === '=' \|\| event\.code === 'Equal'/);
 assert.match(pageMain, /LATEX_GDOCS_ACCESSIBLE_ADDON_HOTKEY/);
@@ -30,5 +50,7 @@ assert.match(addon, /ACCESSIBLE_EQUATIONS_FOCUS_READY/);
 assert.match(addon, /ACCESSIBLE_EQUATIONS_FOCUS_INPUT/);
 assert.match(addon, /focusEditorForDocumentCursor/);
 assert.match(addon, /\.getSelectedEquation\(\)/);
+assert.match(addon, /window\.top\.postMessage/);
+assert.match(addon, /fromSelf/);
 
 console.log('Accessible add-on focus bridge checks passed.');
